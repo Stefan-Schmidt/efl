@@ -66,10 +66,22 @@
 
 #  define EINA_MAX_BT 256
 
+typedef Eina_Bool (*Eina_Debug_Cb)(void *buffer, int size);
+
+typedef struct
+{
+   uint32_t size;
+   char opcode[4];
+} Eina_Debug_Packet_Header;
+
+typedef struct
+{
+   int fd;
+} Eina_Debug_Session;
+
 extern Eina_Spinlock  _eina_debug_lock;
 extern Eina_Spinlock  _eina_debug_thread_lock;
 extern Eina_Semaphore _eina_debug_monitor_return_sem;
-extern int            _eina_debug_monitor_service_fd;
 
 void _eina_debug_thread_add(void *th);
 void _eina_debug_thread_del(void *th);
@@ -85,14 +97,14 @@ const char *_eina_debug_file_get(const char *fname);
 
 void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 
-void _eina_debug_monitor_thread_start(void);
+void _eina_debug_monitor_thread_start(Eina_Debug_Session *session);
 void _eina_debug_monitor_signal_init(void);
-void _eina_debug_monitor_service_connect(void);
+Eina_Debug_Session *_eina_debug_monitor_service_connect(void);
 
-int  _eina_debug_monitor_service_send(int fd, const char op[4],
-                                      unsigned char *data, int size);
-void _eina_debug_monitor_service_greet(void);
-int  _eina_debug_monitor_service_read(char *op, unsigned char **data);
+int  _eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
+                              unsigned char *data, int size);
+void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
+int  _eina_debug_session_receive(Eina_Debug_Session *session, char *op, unsigned char **data);
 
 #  define EINA_BT(file) \
    do { \

@@ -21,23 +21,24 @@
 #ifdef EINA_HAVE_DEBUG
 
 int
-_eina_debug_monitor_service_send(int fd, const char op[4],
+_eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
                                  unsigned char *data, int size)
 {
+   if (!session) return -1;
    // send protocol packet. all protocol is an int for size of packet then
    // included in that size (so a minimum size of 4) is a 4 byte opcode
    // (all opcodes are 4 bytes as a string of 4 chars), then the real
    // message payload as a data blob after that
-   unsigned char *buf = alloca(4 + 4 + size);
-   int newsize = size + 4;
-   memcpy(buf, &newsize, 4);
-   memcpy(buf + 4, op, 4);
-   if (size > 0) memcpy(buf + 8, data, size);
-   return write(fd, buf, newsize + 4);
+   unsigned char *buf = alloca(sizeof(Eina_Debug_Packet_Header) + size);
+   Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
+   hdr->size = size + 4;
+   memcpy(hdr->opcode, op, 4);
+   if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
+   return write(session->fd, buf, hdr->size + 4);
 }
 
 void
-_eina_debug_monitor_service_greet(void)
+_eina_debug_monitor_service_greet(Eina_Debug_Session *session)
 {
    // say hello to our debug daemon - tell them our PID and protocol
    // version we speak
@@ -46,20 +47,20 @@ _eina_debug_monitor_service_greet(void)
    int pid = getpid();
    memcpy(buf +  0, &version, 4);
    memcpy(buf +  4, &pid, 4);
-   _eina_debug_monitor_service_send(_eina_debug_monitor_service_fd,
-                                    "HELO", buf, sizeof(buf));
+   _eina_debug_session_send(session, "HELO", buf, sizeof(buf));
 }
 
 int
-_eina_debug_monitor_service_read(char *op, unsigned char **data)
+_eina_debug_session_receive(Eina_Debug_Session *session, char *op, unsigned char **data)
 {
    unsigned char buf[8];
    unsigned int size;
    int rret;
 
+   if (!session) return -1;
    // read first 8 bytes - payload size (excl size header) with 4 byte
    // opcode that always has to be there
-   rret = read(_eina_debug_monitor_service_fd, buf, 8);
+   rret = read(session->fd, buf, 8);
    if (rret == 8)
      {
         // store size in int - native endianess as it's local
@@ -83,7 +84,7 @@ _eina_debug_monitor_service_read(char *op, unsigned char **data)
                   if (*data)
                     {
                        // get payload - blocking!!!!
-                       rret = read(_eina_debug_monitor_service_fd, *data, size);
+                       rret = read(session->fd, *data, size);
                        if (rret != (int)size)
                          {
                             // we didn't get payload as expected - error on
