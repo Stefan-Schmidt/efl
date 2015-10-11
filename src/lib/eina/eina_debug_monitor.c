@@ -374,6 +374,18 @@ _socket_home_get()
    return dir;
 }
 
+Eina_Debug_Session *
+_eina_debug_session_new()
+{
+   Eina_Debug_Session *session = calloc(1, sizeof(*session));
+
+   int i;
+   for(i = 0; i < OPCODE_MAX; i++)
+      session->cbs[i] = NULL;
+
+   return session;
+}
+
 // connect to efl_debugd
 Eina_Debug_Session *
 _eina_debug_monitor_service_connect(void)
@@ -408,7 +420,7 @@ _eina_debug_monitor_service_connect(void)
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
      goto err;
    // we succeeded - store fd
-   Eina_Debug_Session *session = calloc(1, sizeof(*session));
+   Eina_Debug_Session *session = _eina_debug_session_new();
    session->fd = fd;
    return session;
 err:

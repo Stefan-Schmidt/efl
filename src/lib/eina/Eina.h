@@ -268,6 +268,7 @@ extern "C" {
 #include <eina_util.h>
 #include <eina_quaternion.h>
 #include <eina_bezier.h>
+#include <eina_debug.h>
 
 #undef EAPI
 #define EAPI

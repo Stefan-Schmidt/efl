@@ -66,6 +66,8 @@
 
 #  define EINA_MAX_BT 256
 
+#define OPCODE_MAX 100
+
 typedef Eina_Bool (*Eina_Debug_Cb)(void *buffer, int size);
 
 typedef struct
@@ -77,7 +79,15 @@ typedef struct
 typedef struct
 {
    int fd;
+   Eina_Debug_Cb cbs[OPCODE_MAX];
 } Eina_Debug_Session;
+
+typedef struct
+{
+   char* opcode_name;
+   unsigned int* opcode_id;
+   Eina_Debug_Cb cb;
+} Eina_Debug_Opcode;
 
 extern Eina_Spinlock  _eina_debug_lock;
 extern Eina_Spinlock  _eina_debug_thread_lock;
@@ -105,6 +115,13 @@ int  _eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
                               unsigned char *data, int size);
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
 int  _eina_debug_session_receive(Eina_Debug_Session *session, char *op, unsigned char **data);
+
+/* Last opcode_name in ops is NULL
+ * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
+ * */
+EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[]);
+Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, unsigned char *buffer, int size);
+Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, unsigned char *buffer);
 
 #  define EINA_BT(file) \
    do { \

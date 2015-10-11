@@ -20,22 +20,81 @@
 
 #ifdef EINA_HAVE_DEBUG
 
-#define OPCODE_MAX 100
-
-Eina_Debug_Cb _cbs[OPCODE_MAX] = {};
-
-//void
-//eina_debug_opcodes_register
-Eina_Bool
-eina_debug_dispatch(void *buffer)
+/* Last opcode_name in ops is NULL
+ * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
+ * */
+EAPI void
+eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[])
 {
-   Eina_Debug_Packet_Header *hdr = buffer;
+   unsigned char *buf;
+
+   int count = 0;
+   int size = sizeof(Eina_Debug_Opcode *);
+
+   while(ops[count].opcode_name)
+     {
+        size += strlen(ops[count].opcode_name) + 1;
+        count++;
+     }
+
+   buf = alloca(size);
+
+   memcpy(buf, &ops, sizeof(Eina_Debug_Opcode *));
+   int size_curr = sizeof(Eina_Debug_Opcode *) + 1;
+
+   while(ops->opcode_name)
+     {
+        int len = strlen(ops->opcode_name) + 1;
+        memcpy(buf + size_curr, ops->opcode_name, len);
+        ops++;
+     }
+
+   _eina_debug_session_send(session,
+         "REGO"/* register opcode , should be changed to 0 */,
+         buf,
+         size);
+}
+
+/* Expecting pointer of ops followed by list of uint's */
+Eina_Bool
+eina_debug_register_cb(Eina_Debug_Session *session, unsigned char *buffer, int size)
+{
+   Eina_Debug_Opcode* ops = NULL;
+
+   if(size >= (int)sizeof(Eina_Debug_Opcode *))
+      memcpy(&ops, buffer, sizeof(Eina_Debug_Opcode *));
+
+   if(!ops)
+      return EINA_FALSE;
+
+   buffer += sizeof(Eina_Debug_Opcode*);
+
+   unsigned int* os = (unsigned int*)buffer;
+   int count = (size - sizeof(Eina_Debug_Opcode*)) / sizeof(unsigned int);
+
+   int i;
+   for(i = 0; i < count; i++)
+     {
+        if(ops[i].opcode_id)
+          {
+             *(ops[i].opcode_id) = os[i];
+          }
+        session->cbs[os[i]] =  ops[i].cb;
+     }
+
+   return EINA_TRUE;
+}
+
+Eina_Bool
+eina_debug_dispatch(Eina_Debug_Session *session, unsigned char *buffer)
+{
+   Eina_Debug_Packet_Header *hdr =  (Eina_Debug_Packet_Header *)buffer;
 
    uint32_t opcode = hdr->opcode;
 
    if (opcode < OPCODE_MAX)
      {
-        Eina_Debug_Cb cb = _cbs[opcode];
+        Eina_Debug_Cb cb = session->cbs[opcode];
         if (cb) cb(buffer + sizeof(*hdr), hdr->size - sizeof(*hdr));
         return EINA_TRUE;
      }
