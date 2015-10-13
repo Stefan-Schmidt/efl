@@ -192,6 +192,32 @@ class Evas.Textblock (Evas.Object)
             b: Evas.Coord;
          }
       }
+      @property hyphenation_mode {
+         [[Enables hyphenation handling in the textlblock object.
+
+           If set to MANUAL, the textblock will consider SOFT-HYPHEN marks as
+           hints for word wrapping possibilities. The SOFT-HYPHEN will then be
+           replaced with a visible proper hyphen in the wrapped line.
+           Be aware that cursor operations may delete the invisible
+           SOFT-HYPHEN, so this mode is less recommended if you will be using
+           the textblock object for interactive purposes like text editing.
+
+           If set to AUTO, the textblock will use the <lang> format tag
+           (or fallback to locale language) and will hyphenate based on
+           this language.
+           However, if no hyphenation dictionaries are not installed
+           in your system, it will not hyphenate.
+           The hyphenation dictionaries should be from (or compatible with):
+           http://sourceforge.net/projects/hunspell/files/Hyphen/2.8/
+
+           If set to NONE, word-wrapping does not hyphenate.
+
+           @since 1.17
+         ]]
+         values {
+            mode: Evas.Hyphenation_Mode; [[Hyphenation Mode]]
+         }
+      }
       line_number_geometry_get @const {
          [[Get the geometry of a line number.]]
          return: bool; [[$true on success, $false otherwise.]]

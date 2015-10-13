@@ -104,6 +104,13 @@ enum Evas.Text_Style_Type {
    shadow_direction_right = (0x7 << 4)             [[shadow growing to the right]]
 }
 
+enum Evas.Hyphenation_Mode {
+   [[Method to be used with hyphenations]]
+   none,   [[Don't hyphenate]]
+   manual, [[Hyphenate only if there is SOFT-HYPHEN]]
+   auto    [[Hypheante automatically if hypheantion dictionary is available]]
+}
+
 type Evas.Font.Size: int; [[A type for font size]]
 
 enum Evas.Font.Hinting_Flags {
