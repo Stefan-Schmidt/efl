@@ -36,7 +36,6 @@
 #  include <stdio.h>
 #  include <string.h>
 #  include <unistd.h>
-#  include <dlfcn.h>
 #  include <sys/select.h>
 #  include <sys/time.h>
 #  include <sys/types.h>
@@ -52,21 +51,14 @@
 #  include <libunwind.h>
 
 #  include "eina_config.h"
-#  include "eina_private.h"
-#  include "eina_inlist.h"
 #  include "eina_lock.h"
-#  include "eina_thread.h"
-#  include "eina_convert.h"
-#  include "eina_strbuf.h"
-#  include "eina_safety_checks.h"
-#  include "eina_log.h"
-#  include "eina_inline_private.h"
+
 
 #  define EINA_HAVE_DEBUG 1
 
 #  define EINA_MAX_BT 256
 
-#define OPCODE_MAX 100
+#  define OPCODE_MAX 100
 
 typedef Eina_Bool (*Eina_Debug_Cb)(void *buffer, int size);
 
@@ -120,8 +112,8 @@ int  _eina_debug_session_receive(Eina_Debug_Session *session, char *op, unsigned
  * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
  * */
 EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[]);
-Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, unsigned char *buffer, int size);
-Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, unsigned char *buffer);
+Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size);
+Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
 
 #  define EINA_BT(file) \
    do { \

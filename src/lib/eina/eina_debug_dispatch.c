@@ -57,20 +57,21 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 
 /* Expecting pointer of ops followed by list of uint's */
 Eina_Bool
-eina_debug_register_cb(Eina_Debug_Session *session, unsigned char *buffer, int size)
+eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size)
 {
    Eina_Debug_Opcode* ops = NULL;
+   unsigned char *buff = buffer;
 
    if(size >= (int)sizeof(Eina_Debug_Opcode *))
-      memcpy(&ops, buffer, sizeof(Eina_Debug_Opcode *));
+      memcpy(&ops, buff, sizeof(Eina_Debug_Opcode *));
 
    if(!ops)
       return EINA_FALSE;
 
-   buffer += sizeof(Eina_Debug_Opcode*);
+   buff += sizeof(Eina_Debug_Opcode *);
 
-   unsigned int* os = (unsigned int*)buffer;
-   int count = (size - sizeof(Eina_Debug_Opcode*)) / sizeof(unsigned int);
+   uint32_t* os = (uint32_t *)buff;
+   int count = (size - sizeof(Eina_Debug_Opcode *)) / sizeof(unsigned int);
 
    int i;
    for(i = 0; i < count; i++)
@@ -86,16 +87,16 @@ eina_debug_register_cb(Eina_Debug_Session *session, unsigned char *buffer, int s
 }
 
 Eina_Bool
-eina_debug_dispatch(Eina_Debug_Session *session, unsigned char *buffer)
+eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 {
-   Eina_Debug_Packet_Header *hdr =  (Eina_Debug_Packet_Header *)buffer;
+   Eina_Debug_Packet_Header *hdr =  buffer;
 
    uint32_t opcode = hdr->opcode;
 
    if (opcode < OPCODE_MAX)
      {
         Eina_Debug_Cb cb = session->cbs[opcode];
-        if (cb) cb(buffer + sizeof(*hdr), hdr->size - sizeof(*hdr));
+        if (cb) cb((unsigned char *)buffer + sizeof(*hdr), hdr->size - sizeof(*hdr));
         return EINA_TRUE;
      }
 

@@ -16,6 +16,14 @@
  * if not, see <http://www.gnu.org/licenses/>.
  */
 
+# ifdef HAVE_CONFIG_H
+#  include "config.h"
+# endif
+
+#ifdef HAVE_DLADDR
+# include <dlfcn.h>
+#endif
+
 #include "eina_debug.h"
 
 #ifdef EINA_HAVE_DEBUG
