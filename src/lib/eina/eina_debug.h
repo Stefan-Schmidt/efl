@@ -65,6 +65,11 @@ typedef Eina_Bool (*Eina_Debug_Cb)(void *buffer, int size);
 typedef struct
 {
    uint32_t size;
+   /*
+    * During sending, it corresponds to the id of the destination. During reception, it is the id of the source
+    * The daemon is in charge of swapping the id before forwarding to the destination.
+    */
+   uint32_t cid;
    char opcode[4];
 } Eina_Debug_Packet_Header;
 
