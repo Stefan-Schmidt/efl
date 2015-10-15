@@ -53,7 +53,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
      }
 
    _eina_debug_session_send(session,
-         "REGO"/* register opcode , should be changed to 0 */,
+         EINA_OPCODE_REG,
          buf,
          size);
 }
@@ -74,7 +74,11 @@ eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size)
    buff += sizeof(Eina_Debug_Opcode *);
 
    uint32_t* os = (uint32_t *)buff;
+<<<<<<< b770857febd3ff0fac98fa5697214209e146b2bb
    int count = (size - sizeof(Eina_Debug_Opcode *)) / sizeof(unsigned int);
+=======
+   int count = (size - sizeof(Eina_Debug_Opcode *)) / sizeof(uint32_t);
+>>>>>>> TEMP: Modify opcodes handling to use our new opcodes register function
 
    int i;
    for(i = 0; i < count; i++)

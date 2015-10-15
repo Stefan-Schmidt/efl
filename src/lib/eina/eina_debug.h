@@ -58,7 +58,11 @@
 
 #  define EINA_MAX_BT 256
 
-#  define OPCODE_MAX 100
+#  define EINA_OPCODE_MAX 100
+
+#  define EINA_OPCODE_HELO 0
+
+#  define EINA_OPCODE_REG 1
 
 typedef Eina_Bool (*Eina_Debug_Cb)(void *buffer, int size);
 
@@ -76,7 +80,7 @@ typedef struct
 typedef struct
 {
    int fd;
-   Eina_Debug_Cb cbs[OPCODE_MAX];
+   Eina_Debug_Cb cbs[EINA_OPCODE_MAX];
 } Eina_Debug_Session;
 
 typedef struct
@@ -107,6 +111,7 @@ void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 void _eina_debug_monitor_thread_start(Eina_Debug_Session *session);
 void _eina_debug_monitor_signal_init(void);
 Eina_Debug_Session *_eina_debug_monitor_service_connect(void);
+void _eina_debug_monitor_register_opcodes(void);
 
 int  _eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
                               unsigned char *data, int size);

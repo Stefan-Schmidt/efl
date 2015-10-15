@@ -43,10 +43,16 @@ static int                *_bt_cpu;
 
 static Eina_Debug_Session *main_session = NULL;
 
-static Eina_Debug_Session *
+// some state for debugging
+static unsigned int   poll_time = 1000;
+static Eina_Bool      poll_on = EINA_FALSE;
+static Eina_Bool      poll_trace = EINA_FALSE;
+static Eina_Bool      poll_cpu = EINA_FALSE;
+
+Eina_Debug_Session *
 _eina_debug_session_new()
 {
-   Eina_Debug_Session *session = calloc(1, sizeof(Eina_Debug_Session));
+   Eina_Debug_Session *session = calloc(1, sizeof(*session));
 
    int i;
    for(i = 0; i < OPCODE_MAX; i++)
@@ -150,6 +156,37 @@ _eina_debug_collect_bt(pthread_t pth)
    pthread_kill(pth, SIG);
 }
 
+// profiling on with poll time gap as uint payload
+static Eina_Bool
+_eina_debug_prof_on_cb(void *buffer, int size)
+{
+   if (size >= 4) memcpy(&poll_time, buffer, 4);
+   poll_on = EINA_TRUE;
+   poll_trace = EINA_TRUE;
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_eina_debug_prof_off_cb(void *buffer, int size)
+{
+   poll_time = 1000;
+   poll_on = EINA_FALSE;
+   poll_trace = EINA_FALSE;
+   return EINA_TRUE;
+}
+
+static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
+       {"PLON", NULL, &_eina_debug_prof_on_cb},
+       {"PLOF", NULL, &_eina_debug_prof_off_cb},
+       {NULL, NULL, NULL}
+};
+
+static void
+_eina_debug_monitor_register_opcodes()
+{
+   eina_debug_opcodes_register(NULL, _EINA_DEBUG_MONITOR_OPS);
+}
+
 // this is a DEDICATED debug thread to monitor the application so it works
 // even if the mainloop is blocked or the app otherwise deadlocked in some
 // way. this is an alternative to using external debuggers so we can get
@@ -161,11 +198,6 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
    double t0, t;
    fd_set rfds, wfds, exfds;
    struct timeval tv = { 0, 0 };
-   // some state for debugging
-   unsigned int poll_time = 1000;
-   Eina_Bool poll_on = EINA_FALSE;
-   Eina_Bool poll_trace = EINA_FALSE;
-   Eina_Bool poll_cpu = EINA_FALSE;
 
    t0 = get_time();
    // sit forever processing commands or timeouts in the debug monitor
@@ -204,35 +236,12 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
 
              // get the opcode and stor in op - guarantee its 0 byte terminated
              data = NULL;
-             size = _eina_debug_session_receive(main_session, op, &data);
+//             size = _eina_debug_session_receive(main_session, op, &data);
              // if not negative - we have a real message
              if (size >= 0)
                {
-                  // profiling on with poll time gap as uint payload
-                  if (!strcmp(op, "PLON"))
-                    {
-                       if (size >= 4) memcpy(&poll_time, data, 4);
-                       poll_on = EINA_TRUE;
-                       poll_trace = EINA_TRUE;
-                    }
-                  // profiling off with no payload
-                  else if (!strcmp(op, "PLOF"))
-                    {
-                       poll_time = 1000;
-                       poll_on = EINA_FALSE;
-                       poll_trace = EINA_FALSE;
-                    }
-                  // enable evlog
-                  else if (!strcmp(op, "EVON"))
-                    {
-                       eina_evlog_start();
-                    }
-                  // stop evlog
-                  else if (!strcmp(op, "EVOF"))
-                    {
-                       eina_evlog_stop();
-                    }
-                  // enable evlog
+                  /* TODO make in work with our updates */
+                  /* enable evlog
                   else if (!strcmp(op, "CPON"))
                     {
                        if (size >= 4) memcpy(&poll_time, data, 4);
@@ -244,29 +253,10 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
                     {
                        poll_on = EINA_FALSE;
                        poll_cpu = EINA_FALSE;
-                    }
-                  // fetch the evlog
-                  else if (!strcmp(op, "EVLG"))
-                    {
-                       Eina_Evlog_Buf *evlog = eina_evlog_steal();
-                       if ((evlog) && (evlog->buf))
-                         {
-                            char          tmp[12];
-                            unsigned int *tmpsize  = (unsigned int *)(tmp + 0);
-                            char         *op2 = "EVLG";
-                            unsigned int *overflow = (unsigned int *)(tmp + 8);
-
-                            *tmpsize = (sizeof(tmp) - 4) + evlog->top;
-                            memcpy(tmp + 4, op2, 4);
-                            *overflow = evlog->overflow;
-                            write(_eina_debug_monitor_service_fd,
-                                  tmp, sizeof(tmp));
-                            write(_eina_debug_monitor_service_fd,
-                                  evlog->buf, evlog->top);
-                         }
-                    }
+                    }*/
                   // something we don't understand
-                  else fprintf(stderr,
+                  if(!eina_debug_dispatch(main_session, data))
+                     fprintf(stderr,
                                "EINA DEBUG ERROR: "
                                "Uunknown command %s\n", op);
                   free(data);

@@ -68,6 +68,8 @@ eina_debug_init(void)
      {
         // say hello to the debug daemon
         _eina_debug_monitor_service_greet(session);
+        //register opcodes for monitor
+        _eina_debug_monitor_register_opcodes();
         // set up our profile signal handler
         _eina_debug_monitor_signal_init();
         // start the monitor thread

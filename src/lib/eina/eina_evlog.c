@@ -225,12 +225,71 @@ eina_evlog_stop(void)
    eina_spinlock_release(&_evlog_lock);
 }
 
+static Eina_Bool
+_eina_evlog_start_cb(void *buffer, int size)
+{
+   printf("eo callback\n");
+   return EINA_TRUE;
+}
+
+// enable evlog
+static Eina_Bool
+_eina_evlog_start_cb(void *buffer, int size)
+{
+   eina_evlog_start();
+   return EINA_TRUE;
+}
+
+// stop evlog
+static Eina_Bool
+_eina_evlog_stop_cb(void *buffer, int size)
+{
+   eina_evlog_stop();
+   return EINA_TRUE;
+}
+
+static unsigned int _eina_evlog_fetch_op = 0;
+// fetch the evlog
+static Eina_Bool
+_eina_evlog_fetch_cb(void *buffer, int size)
+{
+   Eina_Evlog_Buf *evlog = eina_evlog_steal();
+   if ((evlog) && (evlog->buf))
+     {
+       /* TODO change it to use current updates */
+       /*
+       char          tmp[12];
+       unsigned int *tmpsize  = (unsigned int *)(tmp + 0);
+       char         *op2 = "EVLG";
+       unsigned int *overflow = (unsigned int *)(tmp + 8);
+
+       *tmpsize = (sizeof(tmp) - 4) + evlog->top;
+       memcpy(tmp + 4, op2, 4);
+       *overflow = evlog->overflow;
+       write(_eina_debug_monitor_service_fd,
+             tmp, sizeof(tmp));
+       write(_eina_debug_monitor_service_fd,
+             evlog->buf, evlog->top);
+*/
+
+     }
+   return EINA_TRUE;
+}
+
+static const Eina_Debug_Opcode _EINA_DEBUG_EVLOG_OPS[] = {
+       {"EVON", NULL, &_eina_evlog_start_cb},
+       {"EVOF", NULL, &_eina_evlog_stop_cb},
+       {"EVLG", &_eina_evlog_fetch_op, &_eina_evlog_fetch_cb},
+       {NULL, NULL, NULL}
+};
+
 Eina_Bool
 eina_evlog_init(void)
 {
    eina_spinlock_new(&_evlog_lock);
    buf = &(buffers[0]);
    eina_evlog("+eina_init", NULL, 0.0, NULL);
+   eina_debug_opcodes_register(NULL, _EINA_DEBUG_EVLOG_OPS);
    return EINA_TRUE;
 }
 
