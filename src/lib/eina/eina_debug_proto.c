@@ -21,7 +21,7 @@
 #ifdef EINA_HAVE_DEBUG
 
 int
-_eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
+_eina_debug_session_send(Eina_Debug_Session *session, unsigned int op,
                                  unsigned char *data, int size)
 {
    if (!session) return -1;
@@ -31,10 +31,10 @@ _eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
    // message payload as a data blob after that
    unsigned char *buf = alloca(sizeof(Eina_Debug_Packet_Header) + size);
    Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
-   hdr->size = size + 4;
-   memcpy(hdr->opcode, op, 4);
+   hdr->size = size + sizeof(Eina_Debug_Packet_Header) - sizeof(uint32_t);
+   hdr->opcode = (uint32_t)op;
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
-   return write(session->fd, buf, hdr->size + 4);
+   return write(session->fd, buf, hdr->size + sizeof(uint32_t));
 }
 
 void
@@ -47,80 +47,55 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
    int pid = getpid();
    memcpy(buf +  0, &version, 4);
    memcpy(buf +  4, &pid, 4);
-   _eina_debug_session_send(session, "HELO", buf, sizeof(buf));
+   _eina_debug_session_send(session, EINA_OPCODE_HELO, buf, sizeof(buf));
 }
 
 int
-_eina_debug_session_receive(Eina_Debug_Session *session, char *op, unsigned char **data)
+_eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 {
-   unsigned char buf[8];
-   unsigned int size;
+   uint32_t size;
    int rret;
 
    if (!session) return -1;
-   // read first 8 bytes - payload size (excl size header) with 4 byte
-   // opcode that always has to be there
-   rret = read(session->fd, buf, 8);
-   if (rret == 8)
+   // get size of packet
+   rret = read(session->fd, (void *)&size, sizeof(uint32_t));
+   if (rret == sizeof(uint32_t))
      {
-        // store size in int - native endianess as it's local
-        memcpy(&size, buf, 4);
-        // min size of course is 4 (just opcode) and we will have a max
-        // size for any packet of 1mb here coming from debug daemon
-        // for sanity
-        if ((size >= 4) && (size <= (1024 * 1024)))
+        // allocate a buffer for real payload + header - size variable size
+        *buffer = malloc(size + sizeof(uint32_t));
+        if (*buffer)
           {
-             // store 4 byte opcode and guarantee it's 0 byte terminated
-             memcpy(op, buf + 4, 4);
-             op[4] = 0;
-             // subtract space for opcode
-             size -= 4;
-             // if we have no payload - move on
-             if (size == 0) *data = NULL;
-             else
+             memcpy(*buffer, &size, sizeof(uint32_t));
+             // get payload - blocking!!!!
+             rret = read(session->fd, *buffer + sizeof(uint32_t), size);
+             if (rret != (int)size)
                {
-                  // allocate a buffer for real payload
-                  *data = malloc(size);
-                  if (*data)
-                    {
-                       // get payload - blocking!!!!
-                       rret = read(session->fd, *data, size);
-                       if (rret != (int)size)
-                         {
-                            // we didn't get payload as expected - error on
-                            // comms
-                            fprintf(stderr,
-                                    "EINA DEBUG ERROR: "
-                                    "Invalid Debug opcode read of %i\n", rret);
-                            free(*data);
-                            *data = NULL;
-                            return -1;
-                         }
-                    }
-                  else
-                    {
-                       // we couldn't allocate memory for payloa buffer
-                       // internal memory limit error
-                       fprintf(stderr,
-                               "EINA DEBUG ERROR: "
-                               "Cannot allocate %u bytes for op\n", size);
-                       return -1;
-                    }
+                  // we didn't get payload as expected - error on
+                  // comms
+                  fprintf(stderr,
+                        "EINA DEBUG ERROR: "
+                        "Invalid payload+header read of %i\n", rret);
+                  free(*buffer);
+                  *buffer = NULL;
+                  return -1;
                }
              // return payload size (< 0 is an error)
              return size;
           }
         else
           {
+             // we couldn't allocate memory for payloa buffer
+             // internal memory limit error
              fprintf(stderr,
-                     "EINA DEBUG ERROR: "
-                     "Invalid opcode size of %u\n", size);
+                   "EINA DEBUG ERROR: "
+                   "Cannot allocate %u bytes for op\n", (unsigned int)size);
              return -1;
           }
      }
    fprintf(stderr,
            "EINA DEBUG ERROR: "
-           "Invalid opcode read %i != 8\n", rret);
+           "Invalid size read %i != %lu\n", rret, sizeof(uint32_t));
+
    return -1;
 }
 #endif

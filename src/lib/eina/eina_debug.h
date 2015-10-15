@@ -74,7 +74,7 @@ typedef struct
     * The daemon is in charge of swapping the id before forwarding to the destination.
     */
    uint32_t cid;
-   char opcode[4];
+   uint32_t opcode;
 } Eina_Debug_Packet_Header;
 
 typedef struct
@@ -113,10 +113,10 @@ void _eina_debug_monitor_signal_init(void);
 Eina_Debug_Session *_eina_debug_monitor_service_connect(void);
 void _eina_debug_monitor_register_opcodes(void);
 
-int  _eina_debug_session_send(Eina_Debug_Session *session, const char op[4],
+int  _eina_debug_session_send(Eina_Debug_Session *session, uint32_t op,
                               unsigned char *data, int size);
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
-int  _eina_debug_session_receive(Eina_Debug_Session *session, char *op, unsigned char **data);
+int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer);
 
 /* Last opcode_name in ops is NULL
  * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n

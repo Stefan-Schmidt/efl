@@ -225,16 +225,9 @@ eina_evlog_stop(void)
    eina_spinlock_release(&_evlog_lock);
 }
 
-static Eina_Bool
-_eina_evlog_start_cb(void *buffer, int size)
-{
-   printf("eo callback\n");
-   return EINA_TRUE;
-}
-
 // enable evlog
 static Eina_Bool
-_eina_evlog_start_cb(void *buffer, int size)
+_eina_evlog_start_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_start();
    return EINA_TRUE;
@@ -242,7 +235,7 @@ _eina_evlog_start_cb(void *buffer, int size)
 
 // stop evlog
 static Eina_Bool
-_eina_evlog_stop_cb(void *buffer, int size)
+_eina_evlog_stop_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_stop();
    return EINA_TRUE;
@@ -251,7 +244,7 @@ _eina_evlog_stop_cb(void *buffer, int size)
 static unsigned int _eina_evlog_fetch_op = 0;
 // fetch the evlog
 static Eina_Bool
-_eina_evlog_fetch_cb(void *buffer, int size)
+_eina_evlog_fetch_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    Eina_Evlog_Buf *evlog = eina_evlog_steal();
    if ((evlog) && (evlog->buf))

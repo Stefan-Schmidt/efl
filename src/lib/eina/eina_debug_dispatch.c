@@ -41,8 +41,8 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 
    buf = alloca(size);
 
-   uint64_t *p = &ops;
-   memcpy(buf, p, sizeof(uint64_t));
+   uint64_t p = (uint64_t)&ops;
+   memcpy(buf, &p, sizeof(uint64_t));
    int size_curr = sizeof(uint64_t);
 
    while(ops->opcode_name)
@@ -53,7 +53,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
      }
 
    _eina_debug_session_send(session,
-         EINA_OPCODE_REG,
+         0/* register opcode , should be changed to 0 */,
          buf,
          size);
 }
@@ -73,12 +73,8 @@ eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size)
 
    buff += sizeof(Eina_Debug_Opcode *);
 
-   uint32_t* os = (uint32_t *)buff;
-<<<<<<< b770857febd3ff0fac98fa5697214209e146b2bb
-   int count = (size - sizeof(Eina_Debug_Opcode *)) / sizeof(unsigned int);
-=======
+   uint32_t *os = (uint32_t *)buff;
    int count = (size - sizeof(Eina_Debug_Opcode *)) / sizeof(uint32_t);
->>>>>>> TEMP: Modify opcodes handling to use our new opcodes register function
 
    int i;
    for(i = 0; i < count; i++)
@@ -100,13 +96,12 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 
    uint32_t opcode = hdr->opcode;
 
-   if (opcode < OPCODE_MAX)
+   if (opcode < EINA_OPCODE_MAX)
      {
         Eina_Debug_Cb cb = session->cbs[opcode];
         if (cb) cb((unsigned char *)buffer + sizeof(*hdr), hdr->size - sizeof(*hdr));
         return EINA_TRUE;
      }
-
    return EINA_FALSE;
 }
 

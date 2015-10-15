@@ -55,7 +55,7 @@ _eina_debug_session_new()
    Eina_Debug_Session *session = calloc(1, sizeof(*session));
 
    int i;
-   for(i = 0; i < OPCODE_MAX; i++)
+   for(i = 0; i < EINA_OPCODE_MAX; i++)
       session->cbs[i] = NULL;
 
    return session;
@@ -167,7 +167,7 @@ _eina_debug_prof_on_cb(void *buffer, int size)
 }
 
 static Eina_Bool
-_eina_debug_prof_off_cb(void *buffer, int size)
+_eina_debug_prof_off_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    poll_time = 1000;
    poll_on = EINA_FALSE;
@@ -181,8 +181,8 @@ static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
        {NULL, NULL, NULL}
 };
 
-static void
-_eina_debug_monitor_register_opcodes()
+void
+_eina_debug_monitor_register_opcodes(void)
 {
    eina_debug_opcodes_register(NULL, _EINA_DEBUG_MONITOR_OPS);
 }
@@ -229,14 +229,10 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
         // if the fd for debug daemon says it's alive, process it
         if ((ret == 1) && (FD_ISSET(main_session->fd, &rfds)))
           {
-             // collect a single op on the debug daemon control fd
-             char op[5];
              int size;
-             unsigned char *data;
+             unsigned char *buffer;
 
-             // get the opcode and stor in op - guarantee its 0 byte terminated
-             data = NULL;
-//             size = _eina_debug_session_receive(main_session, op, &data);
+             size = _eina_debug_session_receive(main_session, &buffer);
              // if not negative - we have a real message
              if (size >= 0)
                {
@@ -255,11 +251,11 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
                        poll_cpu = EINA_FALSE;
                     }*/
                   // something we don't understand
-                  if(!eina_debug_dispatch(main_session, data))
+                  if(!eina_debug_dispatch(main_session, buffer))
                      fprintf(stderr,
-                               "EINA DEBUG ERROR: "
-                               "Uunknown command %s\n", op);
-                  free(data);
+                           "EINA DEBUG ERROR: "
+                           "Uunknown command \n");
+                  free(buffer);
                }
              // major failure on debug daemon control fd - get out of here
              else goto fail;
