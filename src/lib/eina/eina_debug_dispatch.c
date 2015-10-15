@@ -20,9 +20,11 @@
 
 #ifdef EINA_HAVE_DEBUG
 
-/* Last opcode_name in ops is NULL
- * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
- * */
+/*
+ * Sends to daemon:
+ * - Pointer to ops: returned in the response to determine which opcodes have been added
+ * - List of opcode names seperated by \0
+ */
 EAPI void
 eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[])
 {
@@ -39,8 +41,9 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 
    buf = alloca(size);
 
-   memcpy(buf, &ops, sizeof(Eina_Debug_Opcode *));
-   int size_curr = sizeof(Eina_Debug_Opcode *) + 1;
+   uint64_t *p = &ops;
+   memcpy(buf, p, sizeof(uint64_t));
+   int size_curr = sizeof(uint64_t);
 
    while(ops->opcode_name)
      {
