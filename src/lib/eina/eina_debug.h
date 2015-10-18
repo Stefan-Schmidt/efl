@@ -52,7 +52,7 @@
 
 #  include "eina_config.h"
 #  include "eina_lock.h"
-
+#  include "eina_list.h"
 
 #  define EINA_HAVE_DEBUG 1
 
@@ -113,8 +113,12 @@ void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 
 void _eina_debug_monitor_thread_start(Eina_Debug_Session *session);
 void _eina_debug_monitor_signal_init(void);
-Eina_Debug_Session *_eina_debug_monitor_service_connect(void);
+int _eina_debug_monitor_service_connect(void);
 void _eina_debug_monitor_register_opcodes(void);
+
+EAPI Eina_Debug_Session *eina_debug_session_new(void);
+EAPI void eina_debug_session_free(Eina_Debug_Session *session);
+EAPI void eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd);
 
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
 int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer);

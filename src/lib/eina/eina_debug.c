@@ -62,10 +62,12 @@ eina_debug_init(void)
    // for when this debug code is buggy itself
    if (getenv("EFL_NODEBUG")) return EINA_TRUE;
    // connect to our debug daemon
-   Eina_Debug_Session *session = _eina_debug_monitor_service_connect();
+   int fd = _eina_debug_monitor_service_connect();
    // if we connected - set up the debug monitor properly
-   if (session)
+   if (fd)
      {
+        Eina_Debug_Session *session = eina_debug_session_new();
+        session->fd = fd;
         // say hello to the debug daemon
         _eina_debug_monitor_service_greet(session);
         //register opcodes for monitor
