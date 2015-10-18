@@ -77,6 +77,11 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
    info->ops = ops;
    info->ready_cb = ready_cb;
 
+   if(!session)
+      session = _eina_debug_get_main_session();
+   if(!session)
+      return;
+
    while(ops[count].opcode_name)
      {
         size += strlen(ops[count].opcode_name) + 1;

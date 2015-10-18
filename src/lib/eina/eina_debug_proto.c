@@ -25,6 +25,10 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
 {
    if (!dest) return -1;
    Eina_Debug_Session *session = eina_debug_client_session_get(dest);
+
+   if(!session)
+      session = _eina_debug_get_main_session();
+
    if (!session) return -1;
    // send protocol packet. all protocol is an int for size of packet then
    // included in that size (so a minimum size of 4) is a 4 byte opcode

@@ -86,6 +86,12 @@ _eina_debug_sessions_free(void)
    eina_list_free(sessions);
 }
 
+Eina_Debug_Session *
+_eina_debug_get_main_session()
+{
+   return main_session;
+}
+
 static Eina_Debug_Session *
 _eina_debug_session_find_by_fd(int fd)
 {

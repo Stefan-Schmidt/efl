@@ -122,7 +122,7 @@ EAPI void eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd);
 
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
 int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer);
-
+Eina_Debug_Session *_eina_debug_get_main_session();
 /* Last opcode_name in ops is NULL
  * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
  * */
