@@ -52,7 +52,7 @@ static Eina_Bool      poll_cpu = EINA_FALSE;
 Eina_Debug_Session *
 _eina_debug_session_new()
 {
-   Eina_Debug_Session *session = calloc(1, sizeof(*session));
+   Eina_Debug_Session *session = calloc(1, sizeof(Eina_Debug_Session));
 
    int i;
    for(i = 0; i < EINA_OPCODE_MAX; i++)
@@ -158,7 +158,7 @@ _eina_debug_collect_bt(pthread_t pth)
 
 // profiling on with poll time gap as uint payload
 static Eina_Bool
-_eina_debug_prof_on_cb(void *buffer, int size)
+_eina_debug_prof_on_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer, int size)
 {
    if (size >= 4) memcpy(&poll_time, buffer, 4);
    poll_on = EINA_TRUE;
@@ -167,7 +167,7 @@ _eina_debug_prof_on_cb(void *buffer, int size)
 }
 
 static Eina_Bool
-_eina_debug_prof_off_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_eina_debug_prof_off_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    poll_time = 1000;
    poll_on = EINA_FALSE;

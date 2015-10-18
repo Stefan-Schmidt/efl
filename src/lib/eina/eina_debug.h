@@ -64,7 +64,11 @@
 
 #  define EINA_OPCODE_REG 1
 
-typedef Eina_Bool (*Eina_Debug_Cb)(void *buffer, int size);
+#  define EINA_DEBUG_REGISTER_OPCODE 0x0000
+
+typedef struct _Eina_Debug_Source Eina_Debug_Source;
+
+typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Source *src, void *buffer, int size);
 
 typedef struct
 {
@@ -85,8 +89,8 @@ typedef struct
 
 typedef struct
 {
-   char* opcode_name;
-   unsigned int* opcode_id;
+   char *opcode_name;
+   uint32_t *opcode_id;
    Eina_Debug_Cb cb;
 } Eina_Debug_Opcode;
 
@@ -124,6 +128,9 @@ int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **bu
 EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[]);
 Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size);
 Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
+
+EAPI Eina_Debug_Session *eina_debug_source_session_get(Eina_Debug_Source *src);
+EAPI int eina_debug_source_id_get(Eina_Debug_Source *src);
 
 #  define EINA_BT(file) \
    do { \

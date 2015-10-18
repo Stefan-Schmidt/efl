@@ -227,7 +227,7 @@ eina_evlog_stop(void)
 
 // enable evlog
 static Eina_Bool
-_eina_evlog_start_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_eina_evlog_start_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_start();
    return EINA_TRUE;
@@ -235,7 +235,7 @@ _eina_evlog_start_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
 
 // stop evlog
 static Eina_Bool
-_eina_evlog_stop_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_eina_evlog_stop_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_stop();
    return EINA_TRUE;
@@ -244,7 +244,7 @@ _eina_evlog_stop_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
 static unsigned int _eina_evlog_fetch_op = 0;
 // fetch the evlog
 static Eina_Bool
-_eina_evlog_fetch_cb(void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_eina_evlog_fetch_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    Eina_Evlog_Buf *evlog = eina_evlog_steal();
    if ((evlog) && (evlog->buf))
