@@ -54,22 +54,31 @@ static Eina_Bool      poll_on = EINA_FALSE;
 static Eina_Bool      poll_trace = EINA_FALSE;
 static Eina_Bool      poll_cpu = EINA_FALSE;
 
+Eina_Debug_Cb *_eina_debug_cbs = NULL;
+unsigned int _eina_debug_cbs_length = 0;
+
 EAPI Eina_Debug_Session *
-eina_debug_session_new(void)
+eina_debug_session_new()
 {
    Eina_Debug_Session *session = calloc(1, sizeof(Eina_Debug_Session));
 
-   int i;
-   for(i = 0; i < EINA_DEBUG_OPCODE_MAX; i++)
-      session->cbs[i] = NULL;
+   session->use_global_cbs = EINA_FALSE;;
 
    return session;
 }
 
 EAPI void
+eina_debug_session_global_cbs_set(Eina_Debug_Session *session,
+      Eina_Bool use_global_cbs)
+{
+   session->use_global_cbs = use_global_cbs;
+}
+
+EAPI void
 eina_debug_session_free(Eina_Debug_Session *session)
 {
-  free(session);
+   free(session->cbs);
+   free(session);
 }
 
 static void

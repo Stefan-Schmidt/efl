@@ -120,18 +120,47 @@ _eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
 
    if (!info) return EINA_FALSE;
 
-   uint32_t* os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
-   int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
+   uint32_t *os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
+   unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
 
-   int i;
+   unsigned int i;
+   unsigned int max_id = 0;
+
    for (i = 0; i < count; i++)
      {
         if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
-        session->cbs[os[i]] = info->ops[i].cb;
+
+        if(os[i] > max_id)
+           max_id = os[i];
+     }
+   Eina_Debug_Cb **cbs;
+   unsigned int *cbs_length;
+
+   if(!(session->use_global_cbs))
+     {
+        cbs = &(session->cbs);
+        cbs_length = &(session->cbs_length);
+     }
+   else
+     {
+        cbs = &(_eina_debug_cbs);
+        cbs_length = &(_eina_debug_cbs_length);
+     }
+
+   if(*cbs_length < max_id + 1)
+     {
+        i = *cbs_length;
+        *cbs_length =  max_id + 1;
+        *cbs = realloc(*cbs, *cbs_length);
+        for(; i < *cbs_length; i++)
+           (*cbs)[i] = NULL;
+     }
+   for (i = 0; i < count; i++)
+     {
+        (*cbs)[os[i]] = info->ops[i].cb;
      }
    if (info->ready_cb) info->ready_cb();
    free(info);
-
    return EINA_TRUE;
 }
 
@@ -139,19 +168,17 @@ Eina_Bool
 eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 {
    Eina_Debug_Packet_Header *hdr =  buffer;
-
    uint32_t opcode = hdr->opcode;
+   Eina_Debug_Cb cb = NULL;
 
-   if (opcode < EINA_DEBUG_OPCODE_MAX)
+   if(session && !session->use_global_cbs && (opcode < session->cbs_length))
+      cb = session->cbs[opcode];
+   if(!cb && opcode < _eina_debug_cbs_length) cb = _eina_debug_cbs[opcode];
+   if (cb)
      {
-        Eina_Debug_Cb cb = session->cbs[opcode];
-        if (cb)
-          {
-             Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);
-             cb(cl, (unsigned char *)buffer + sizeof(*hdr), hdr->size + sizeof(uint32_t) - sizeof(*hdr));
-             eina_debug_client_free(cl);
-          }
-        return EINA_TRUE;
+        Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);
+        cb(cl, (unsigned char *)buffer + sizeof(*hdr), hdr->size + sizeof(uint32_t) - sizeof(*hdr));
+        eina_debug_client_free(cl);
      }
    return EINA_FALSE;
 }
