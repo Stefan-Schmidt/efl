@@ -33,12 +33,15 @@ Eina_Spinlock _eina_debug_lock;
 
 // only init once
 static Eina_Bool _inited = EINA_FALSE;
+static Eina_Bool _reconnect = EINA_TRUE;
 
 Eina_Bool
 eina_debug_init(void)
 {
    pthread_t self;
 
+   if(!_reconnect)
+      return EINA_TRUE;
    // if already inbitted simply release our lock that we may have locked on
    // shutdown if we are re-initted again in the same process
    if (_inited)
@@ -89,6 +92,13 @@ eina_debug_shutdown(void)
    // resources here because they are allocated once only ever.
    return EINA_TRUE;
 }
+
+EAPI void
+eina_debug_set_reconnect(Eina_Bool reconnect)
+{
+   _reconnect = reconnect;
+}
+
 #else
 Eina_Bool
 eina_debug_init(void)

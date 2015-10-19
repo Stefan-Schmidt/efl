@@ -97,6 +97,7 @@ extern Eina_Spinlock  _eina_debug_lock;
 extern Eina_Spinlock  _eina_debug_thread_lock;
 extern Eina_Semaphore _eina_debug_monitor_return_sem;
 
+EAPI void eina_debug_set_reconnect(Eina_Bool reconnect);
 void _eina_debug_thread_add(void *th);
 void _eina_debug_thread_del(void *th);
 void _eina_debug_thread_mainloop_set(void *th);
