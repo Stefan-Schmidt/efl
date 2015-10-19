@@ -227,7 +227,7 @@ eina_evlog_stop(void)
 
 // enable evlog
 static Eina_Bool
-_eina_evlog_start_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_start_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_start();
    return EINA_TRUE;
@@ -235,16 +235,16 @@ _eina_evlog_start_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSE
 
 // stop evlog
 static Eina_Bool
-_eina_evlog_stop_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_stop_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_stop();
    return EINA_TRUE;
 }
 
-static unsigned int _eina_evlog_fetch_op = 0;
+static unsigned int _fetch_op = 0;
 // fetch the evlog
 static Eina_Bool
-_eina_evlog_fetch_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_fetch_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    Eina_Evlog_Buf *evlog = eina_evlog_steal();
    if ((evlog) && (evlog->buf))
@@ -270,9 +270,9 @@ _eina_evlog_fetch_cb(Eina_Debug_Source *src EINA_UNUSED, void *buffer EINA_UNUSE
 }
 
 static const Eina_Debug_Opcode _EINA_DEBUG_EVLOG_OPS[] = {
-       {"EVON", NULL, &_eina_evlog_start_cb},
-       {"EVOF", NULL, &_eina_evlog_stop_cb},
-       {"EVLG", &_eina_evlog_fetch_op, &_eina_evlog_fetch_cb},
+       {"evlog/on", NULL, &_start_cb},
+       {"evlog/off", NULL, &_stop_cb},
+       {"evlog/fetch", &_fetch_op, &_fetch_cb},
        {NULL, NULL, NULL}
 };
 

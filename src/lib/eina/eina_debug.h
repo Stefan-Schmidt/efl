@@ -58,17 +58,15 @@
 
 #  define EINA_MAX_BT 256
 
-#  define EINA_OPCODE_MAX 100
+#  define EINA_DEBUG_OPCODE_MAX 100
 
-#  define EINA_OPCODE_HELO 0
+#  define EINA_DEBUG_OPCODE_INVALID    0xFFFFFFFF
+#  define EINA_DEBUG_OPCODE_REGISTER   0x00000000
+#  define EINA_DEBUG_OPCODE_HELLO      0x00000001
 
-#  define EINA_OPCODE_REG 1
+typedef struct _Eina_Debug_Client Eina_Debug_Client;
 
-#  define EINA_DEBUG_REGISTER_OPCODE 0x0000
-
-typedef struct _Eina_Debug_Source Eina_Debug_Source;
-
-typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Source *src, void *buffer, int size);
+typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
 
 typedef struct
 {
@@ -84,7 +82,7 @@ typedef struct
 typedef struct
 {
    int fd;
-   Eina_Debug_Cb cbs[EINA_OPCODE_MAX];
+   Eina_Debug_Cb cbs[EINA_DEBUG_OPCODE_MAX];
 } Eina_Debug_Session;
 
 typedef struct
@@ -117,8 +115,6 @@ void _eina_debug_monitor_signal_init(void);
 Eina_Debug_Session *_eina_debug_monitor_service_connect(void);
 void _eina_debug_monitor_register_opcodes(void);
 
-int  _eina_debug_session_send(Eina_Debug_Session *session, uint32_t op,
-                              unsigned char *data, int size);
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
 int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer);
 
@@ -128,9 +124,12 @@ int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **bu
 EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[]);
 Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size);
 Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
+EAPI int eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size);
 
-EAPI Eina_Debug_Session *eina_debug_source_session_get(Eina_Debug_Source *src);
-EAPI int eina_debug_source_id_get(Eina_Debug_Source *src);
+EAPI Eina_Debug_Client *eina_debug_client_new(Eina_Debug_Session *session, int id);
+EAPI Eina_Debug_Session *eina_debug_client_session_get(Eina_Debug_Client *cl);
+EAPI int eina_debug_client_id_get(Eina_Debug_Client *cl);
+EAPI void eina_debug_client_free(Eina_Debug_Client *cl);
 
 #  define EINA_BT(file) \
    do { \

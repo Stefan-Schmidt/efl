@@ -20,10 +20,11 @@
 
 #ifdef EINA_HAVE_DEBUG
 
-int
-_eina_debug_session_send(Eina_Debug_Session *session, unsigned int op,
-                                 unsigned char *data, int size)
+EAPI int
+eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size)
 {
+   if (!dest) return -1;
+   Eina_Debug_Session *session = eina_debug_client_session_get(dest);
    if (!session) return -1;
    // send protocol packet. all protocol is an int for size of packet then
    // included in that size (so a minimum size of 4) is a 4 byte opcode
@@ -32,7 +33,8 @@ _eina_debug_session_send(Eina_Debug_Session *session, unsigned int op,
    unsigned char *buf = alloca(sizeof(Eina_Debug_Packet_Header) + size);
    Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
    hdr->size = size + sizeof(Eina_Debug_Packet_Header) - sizeof(uint32_t);
-   hdr->opcode = (uint32_t)op;
+   hdr->opcode = op;
+   hdr->cid = eina_debug_client_id_get(dest);
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
    return write(session->fd, buf, hdr->size + sizeof(uint32_t));
 }
@@ -47,7 +49,9 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
    int pid = getpid();
    memcpy(buf +  0, &version, 4);
    memcpy(buf +  4, &pid, 4);
-   _eina_debug_session_send(session, EINA_OPCODE_HELO, buf, sizeof(buf));
+   Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
+   eina_debug_session_send(cl, EINA_DEBUG_OPCODE_HELLO, buf, sizeof(buf));
+   eina_debug_client_free(cl);
 }
 
 int
