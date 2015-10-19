@@ -67,6 +67,7 @@
 typedef struct _Eina_Debug_Client Eina_Debug_Client;
 
 typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
+typedef void (*Eina_Debug_Opcode_Ready_Cb)();
 
 typedef struct
 {
@@ -121,7 +122,7 @@ int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **bu
 /* Last opcode_name in ops is NULL
  * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
  * */
-EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[]);
+EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[], Eina_Debug_Opcode_Ready_Cb ready_cb);
 Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size);
 Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
 EAPI int eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size);

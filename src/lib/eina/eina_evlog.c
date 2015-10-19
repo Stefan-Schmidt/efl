@@ -282,7 +282,7 @@ eina_evlog_init(void)
    eina_spinlock_new(&_evlog_lock);
    buf = &(buffers[0]);
    eina_evlog("+eina_init", NULL, 0.0, NULL);
-   eina_debug_opcodes_register(NULL, _EINA_DEBUG_EVLOG_OPS);
+   eina_debug_opcodes_register(NULL, _EINA_DEBUG_EVLOG_OPS, NULL);
    return EINA_TRUE;
 }
 

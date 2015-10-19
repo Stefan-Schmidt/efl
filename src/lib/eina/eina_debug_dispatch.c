@@ -55,18 +55,27 @@ eina_debug_client_free(Eina_Debug_Client *cl)
    free(cl);
 }
 
+typedef struct
+{
+   const Eina_Debug_Opcode *ops;
+   Eina_Debug_Opcode_Ready_Cb ready_cb;
+} _opcode_reply_info;
 /*
  * Sends to daemon:
  * - Pointer to ops: returned in the response to determine which opcodes have been added
  * - List of opcode names seperated by \0
  */
 EAPI void
-eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[])
+eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[], Eina_Debug_Opcode_Ready_Cb ready_cb)
 {
    unsigned char *buf;
 
    int count = 0;
-   int size = sizeof(Eina_Debug_Opcode *);
+   int size = sizeof(uint64_t);
+
+   _opcode_reply_info *info = malloc(sizeof(*info));
+   info->ops = ops;
+   info->ready_cb = ready_cb;
 
    while(ops[count].opcode_name)
      {
@@ -76,7 +85,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 
    buf = alloca(size);
 
-   uint64_t p = (uint64_t)&ops;
+   uint64_t p = (uint64_t)&info;
    memcpy(buf, &p, sizeof(uint64_t));
    int size_curr = sizeof(uint64_t);
 
@@ -99,11 +108,11 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 Eina_Bool
 _eina_debug_callbacks_register_cb(Eina_Debug_Session *session, void *buffer, int size)
 {
-   Eina_Debug_Opcode *ops = NULL;
+   _opcode_reply_info *info = NULL;
 
-   memcpy(&ops, buffer, sizeof(uint64_t));
+   memcpy(&info, buffer, sizeof(uint64_t));
 
-   if (!ops) return EINA_FALSE;
+   if (!info) return EINA_FALSE;
 
    uint32_t* os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
    int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
@@ -111,9 +120,11 @@ _eina_debug_callbacks_register_cb(Eina_Debug_Session *session, void *buffer, int
    int i;
    for (i = 0; i < count; i++)
      {
-        if (ops[i].opcode_id) *(ops[i].opcode_id) = os[i];
-        session->cbs[os[i]] = ops[i].cb;
+        if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
+        session->cbs[os[i]] = info->ops[i].cb;
      }
+   if (info->ready_cb) info->ready_cb();
+   free(info);
 
    return EINA_TRUE;
 }

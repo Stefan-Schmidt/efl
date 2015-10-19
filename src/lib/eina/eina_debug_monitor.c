@@ -184,7 +184,7 @@ static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
 void
 _eina_debug_monitor_register_opcodes(void)
 {
-   eina_debug_opcodes_register(NULL, _EINA_DEBUG_MONITOR_OPS);
+   eina_debug_opcodes_register(NULL, _EINA_DEBUG_MONITOR_OPS, NULL);
 }
 
 // this is a DEDICATED debug thread to monitor the application so it works
