@@ -90,14 +90,14 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 
    buf = alloca(size);
 
-   uint64_t p = (uint64_t)&info;
-   memcpy(buf, &p, sizeof(uint64_t));
+   memcpy(buf, &info, sizeof(uint64_t));
    int size_curr = sizeof(uint64_t);
 
    while(ops->opcode_name)
      {
         int len = strlen(ops->opcode_name) + 1;
         memcpy(buf + size_curr, ops->opcode_name, len);
+        size_curr += len;
         ops++;
      }
 
@@ -111,8 +111,9 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
 
 /* Expecting pointer of ops followed by list of uint32's */
 Eina_Bool
-_eina_debug_callbacks_register_cb(Eina_Debug_Session *session, void *buffer, int size)
+_eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
 {
+   Eina_Debug_Session *session = eina_debug_client_session_get(cl);
    _opcode_reply_info *info = NULL;
 
    memcpy(&info, buffer, sizeof(uint64_t));
@@ -144,7 +145,12 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
    if (opcode < EINA_DEBUG_OPCODE_MAX)
      {
         Eina_Debug_Cb cb = session->cbs[opcode];
-        if (cb) cb(NULL, (unsigned char *)buffer + sizeof(*hdr), hdr->size - sizeof(*hdr));
+        if (cb)
+          {
+             Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);
+             cb(cl, (unsigned char *)buffer + sizeof(*hdr), hdr->size + sizeof(uint32_t) - sizeof(*hdr));
+             eina_debug_client_free(cl);
+          }
         return EINA_TRUE;
      }
    return EINA_FALSE;

@@ -18,6 +18,8 @@
 
 #include "eina_debug.h"
 #include "eina_types.h"
+#include "eina_list.h"
+#include "eina_mempool.h"
 
 #ifdef EINA_HAVE_DEBUG
 
@@ -35,6 +37,10 @@ Eina_Spinlock _eina_debug_lock;
 static Eina_Bool _inited = EINA_FALSE;
 static Eina_Bool _reconnect = EINA_TRUE;
 
+extern Eina_Bool eina_module_init(void);
+extern Eina_Bool eina_mempool_init(void);
+extern Eina_Bool eina_list_init(void);
+
 Eina_Bool
 eina_debug_init(void)
 {
@@ -51,6 +57,9 @@ eina_debug_init(void)
      }
    // mark as initted
    _inited = EINA_TRUE;
+   eina_module_init();
+   eina_mempool_init();
+   eina_list_init();
    // set up thread things
    eina_spinlock_new(&_eina_debug_lock);
    eina_spinlock_new(&_eina_debug_thread_lock);
@@ -71,6 +80,7 @@ eina_debug_init(void)
      {
         Eina_Debug_Session *session = eina_debug_session_new();
         session->fd = fd;
+        session->cbs[EINA_DEBUG_OPCODE_REGISTER] = _eina_debug_callbacks_register_cb;
         // say hello to the debug daemon
         _eina_debug_monitor_service_greet(session);
         //register opcodes for monitor

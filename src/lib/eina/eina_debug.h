@@ -119,6 +119,8 @@ void _eina_debug_monitor_signal_init(void);
 int _eina_debug_monitor_service_connect(void);
 void _eina_debug_monitor_register_opcodes(void);
 
+Eina_Bool _eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size);
+
 EAPI Eina_Debug_Session *eina_debug_session_new(void);
 EAPI void eina_debug_session_free(Eina_Debug_Session *session);
 EAPI void eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd);
