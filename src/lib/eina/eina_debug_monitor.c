@@ -496,4 +496,18 @@ err:
    if (fd >= 0) close(fd);
    return 0;
 }
+
+EAPI Eina_Debug_Session *
+eina_debug_local_connect(void)
+{
+   Eina_Debug_Session *session = NULL;
+   int fd = _eina_debug_monitor_service_connect();
+   if (fd)
+     {
+        session = eina_debug_session_new();
+        eina_debug_session_fd_attach(session, fd);
+     }
+   return session;
+}
+
 #endif
