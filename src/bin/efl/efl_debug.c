@@ -130,13 +130,6 @@ _args_handle()
      }
 }
 
-Eina_Bool
-_server_del(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Server_Del *ev EINA_UNUSED)
-{
-   ecore_main_loop_quit();
-   return ECORE_CALLBACK_RENEW;
-}
-
 static const Eina_Debug_Opcode ops[] =
 {
      {"daemon/pids_list",     &_pid_opcode,           &_pids_cb},
