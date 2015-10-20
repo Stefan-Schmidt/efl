@@ -18,95 +18,116 @@
 
 #include "efl_debug_common.h"
 
-static unsigned char *buf;
-static unsigned int   buf_size;
+static uint32_t _pid_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _evlog_fetch_opcode = EINA_DEBUG_OPCODE_INVALID;
 
-static int my_argc;
-static char **my_argv;
-static const char *expect = NULL;
+typedef struct
+{
+   uint32_t *opcode; /* address to the opcode */
+   void *buffer;
+   int size;
+} _pending_request;
 
-static Ecore_Con_Server *svr;
+static Eina_List *_pending = NULL;
+static Eina_Debug_Session *_session = NULL;
+
+static uint32_t _cid = 0, pid = 0;
+
+static int my_argc = 0;
+static char **my_argv = NULL;
 
 static void
-_do(char *op, unsigned char *d, int size)
+_consume()
 {
-   if (!strcmp(op, "CLST"))
+   if (!_pending)
      {
-        int i, n;
-
-        n = (size) / sizeof(int);
-        if (n < 10000)
-          {
-             int *pids = malloc(n * sizeof(int));
-             if (pids)
-               {
-                  memcpy(pids, d, n * sizeof(int));
-                  for (i = 0; i < n; i++)
-                    {
-                       if (pids[i] > 0) printf("%i\n", pids[i]);
-                    }
-                  free(pids);
-               }
-          }
+        ecore_main_loop_quit();
+        return;
      }
-   if ((expect) && (!strcmp(op, expect))) ecore_main_loop_quit();
+   _pending_request *req = eina_list_data_get(_pending);
+   _pending = eina_list_remove(_pending, req);
+
+   Eina_Debug_Client *cl = eina_debug_client_new(_session, _cid);
+   eina_debug_session_send(cl, *(req->opcode), req->buffer, req->size);
+   eina_debug_client_free(cl);
+
+   free(req->buffer);
+   free(req);
 }
 
-Eina_Bool
-_server_add(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Server_Add *ev EINA_UNUSED)
+static void
+_pending_add(uint32_t *opcode, void *buffer, int size)
+{
+   _pending_request *req = malloc(sizeof(*req));
+   req->opcode = opcode;
+   req->buffer = buffer;
+   req->size = size;
+   _pending = eina_list_append(_pending, req);
+}
+
+static Eina_Bool
+_cid_get_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUSED)
+{
+   _cid = *(uint32_t *)buffer;
+   _consume();
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_pids_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+{
+   int i, n;
+
+   n = (size) / sizeof(uint32_t);
+   if (n < 10000)
+     {
+        int *pids = buffer;
+        for (i = 0; i < n; i++)
+          {
+             if (pids[i] > 0) printf("%i\n", pids[i]);
+          }
+     }
+   _consume();
+   return EINA_TRUE;
+}
+
+static void
+_args_handle()
 {
    int i;
    for (i = 1; i < my_argc; i++)
      {
+        Eina_Debug_Client *cl = eina_debug_client_new(_session, 0);
         if (!strcmp(my_argv[i], "list"))
+           eina_debug_session_send(cl, _pid_opcode, NULL, 0);
+        else if (i < my_argc - 1)
           {
-             send_svr(svr, "LIST", NULL, 0);
-             expect = "CLST";
+             const char *op_str = my_argv[i++];
+             pid = atoi(my_argv[i++]);
+             char *buf = NULL;
+             eina_debug_session_send(cl, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
+             if ((!strcmp(op_str, "pon")) && (i < (my_argc - 2)))
+               {
+                  uint32_t freq = atoi(my_argv[i + 2]);
+                  buf = malloc(sizeof(uint32_t));
+                  memcpy(buf, &freq, sizeof(uint32_t));
+                  _pending_add(&_poll_on_opcode, buf, sizeof(uint32_t));
+                  i++;
+               }
+             else if (!strcmp(op_str, "poff"))
+                _pending_add(&_poll_off_opcode, NULL, 0);
+             else if (!strcmp(op_str, "evlogon"))
+                _pending_add(&_evlog_on_opcode, NULL, 0);
+             else if (!strcmp(op_str, "evlogoff"))
+                _pending_add(&_evlog_off_opcode, NULL, 0);
           }
-        else if ((!strcmp(my_argv[i], "pon")) &&
-                 (i < (my_argc - 2)))
-          {
-             unsigned char tmp[8];
-             int pid = atoi(my_argv[i + 1]);
-             unsigned int freq = atoi(my_argv[i + 2]);
-             i += 2;
-             store_val(tmp, 0, pid);
-             store_val(tmp, 4, freq);
-             send_svr(svr, "PLON", tmp, sizeof(tmp));
-             ecore_main_loop_quit();
-          }
-        else if ((!strcmp(my_argv[i], "poff")) &&
-                 (i < (my_argc - 1)))
-          {
-             unsigned char tmp[4];
-             int pid = atoi(my_argv[i + 1]);
-             i++;
-             store_val(tmp, 0, pid);
-             send_svr(svr, "PLOF", tmp, sizeof(tmp));
-             ecore_main_loop_quit();
-          }
-        else if ((!strcmp(my_argv[i], "evlogon")) &&
-                 (i < (my_argc - 1)))
-          {
-             unsigned char tmp[4];
-             int pid = atoi(my_argv[i + 1]);
-             i++;
-             store_val(tmp, 0, pid);
-             send_svr(svr, "EVON", tmp, sizeof(tmp));
-             ecore_main_loop_quit();
-          }
-        else if ((!strcmp(my_argv[i], "evlogoff")) &&
-                 (i < (my_argc - 1)))
-          {
-             unsigned char tmp[4];
-             int pid = atoi(my_argv[i + 1]);
-             i++;
-             store_val(tmp, 0, pid);
-             send_svr(svr, "EVOF", tmp, sizeof(tmp));
-             ecore_main_loop_quit();
-          }
+        eina_debug_client_free(cl);
      }
-   return ECORE_CALLBACK_RENEW;
 }
 
 Eina_Bool
@@ -116,48 +137,37 @@ _server_del(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Server
    return ECORE_CALLBACK_RENEW;
 }
 
-static Eina_Bool
-_server_data(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
+static const Eina_Debug_Opcode ops[] =
 {
-   char op[5];
-   unsigned char *d = NULL;
-   int size;
-
-   _protocol_collect(&(buf), &(buf_size), ev->data, ev->size);
-   while ((size = _proto_read(&(buf), &(buf_size), op, &d)) >= 0)
-     {
-        _do(op, d, size);
-        free(d);
-        d = NULL;
-     }
-   return ECORE_CALLBACK_RENEW;
-}
+     {"daemon/pids_list",     &_pid_opcode,           &_pids_cb},
+     {"daemon/cid_from_pid",  &_cid_from_pid_opcode,  &_cid_get_cb},
+     {"poll/on",              &_poll_on_opcode,       NULL},
+     {"poll/off",             &_poll_off_opcode,      NULL},
+     {"evlog/on",             &_evlog_on_opcode,      NULL},
+     {"evlog/off",            &_evlog_off_opcode,     NULL},
+     {"evlog/fetch",          &_evlog_fetch_opcode,   NULL},
+     {NULL, NULL, NULL}
+};
 
 int
 main(int argc, char **argv)
 {
    eina_init();
    ecore_init();
-   ecore_con_init();
 
    my_argc = argc;
    my_argv = argv;
 
-   svr = ecore_con_server_connect(ECORE_CON_LOCAL_USER, "efl_debug", 0, NULL);
-   if (!svr)
+   _session = eina_debug_local_connect();
+   if (!_session)
      {
         fprintf(stderr, "ERROR: Cannot connect to debug daemon.\n");
         return -1;
      }
-
-   ecore_event_handler_add(ECORE_CON_EVENT_SERVER_ADD, (Ecore_Event_Handler_Cb)_server_add, NULL);
-   ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)_server_del, NULL);
-   ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA, (Ecore_Event_Handler_Cb)_server_data, NULL);
+   eina_debug_opcodes_register(_session, ops, _args_handle);
 
    ecore_main_loop_begin();
-   ecore_con_server_flush(svr);
 
-   ecore_con_shutdown();
    ecore_shutdown();
    eina_shutdown();
 }

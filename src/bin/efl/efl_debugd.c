@@ -31,11 +31,27 @@ struct _Client
    FILE             *evlog_file;
 
    int               version;
-   pid_t             pid;
+   int               cid;
+   pid_t             pid; /* Need to be removed? */
 };
 
 static Ecore_Con_Server *svr = NULL;
 static Eina_List *clients = NULL;
+
+typedef Eina_Bool (*Opcode_Cb)(Ecore_Con_Client *client, void *buffer, int size);
+
+static Eina_Hash *_string_to_opcode_hash = NULL;
+
+static int free_cid = 1;
+
+typedef struct
+{
+   uint32_t opcode;
+   Eina_Stringshare *opcode_string;
+   Opcode_Cb cb;
+} Opcode_Information;
+
+Opcode_Information *_opcodes[EINA_DEBUG_OPCODE_MAX];
 
 static Client *
 _client_pid_find(int pid)
@@ -212,25 +228,162 @@ _client_del(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Client
    return ECORE_CALLBACK_RENEW;
 }
 
+static void
+_client_send(Ecore_Con_Client *dest, void *buffer, int size)
+{
+   Eina_Debug_Packet_Header *hdr = buffer;
+   hdr->size = size - sizeof(uint32_t);
+   ecore_con_client_send(dest, buffer, size);
+}
+
 static Eina_Bool
 _client_data(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Client_Data *ev)
 {
    Client *c = ecore_con_client_data_get(ev->client);
    if (c)
      {
-        char op[5];
-        unsigned char *d = NULL;
-        int size;
-
-        _protocol_collect(&(c->buf), &(c->buf_size), ev->data, ev->size);
-        while ((size = _proto_read(&(c->buf), &(c->buf_size), op, &d)) >= 0)
+        unsigned int size = ev->size;
+        unsigned char *cur = ev->data;
+        Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)cur;
+        unsigned int psize = hdr->size;
+        if (psize < size)
           {
-             _do(c, op, d, size);
-             free(d);
-             d = NULL;
+             /* All the packet is received */
+             if (size > c->buf_size)
+               {
+                  /* Copy the packet into a temp buffer */
+                  c->buf = realloc(c->buf, size);
+                  c->buf_size = size;
+               }
+             memcpy(c->buf, cur, size);
+             hdr = (Eina_Debug_Packet_Header *)c->buf;
+             if (hdr->cid)
+               {
+                  /* If the client id is given, we forward */
+                  Client *dest = _client_pid_find(hdr->cid);
+                  if (dest)
+                    {
+                       hdr->cid = c->cid;
+                       ecore_con_client_send(dest->client, c->buf, c->buf_size);
+                    }
+                  else printf("Client %d not found\n", hdr->cid);
+               }
+             else
+               {
+                  hdr->cid = c->cid;
+                  Opcode_Information *op = _opcodes[hdr->opcode];
+                  if (op && op->cb)
+                    {
+                       printf("Invoke opcode %d\n", hdr->opcode);
+                       op->cb(c->client, c->buf, c->buf_size);
+                    }
+               }
+
+             size -= psize;
+             cur += psize;
+          }
+        else
+          {
+             // Need to handle fragmented packets
           }
      }
    return ECORE_CALLBACK_RENEW;
+}
+
+static uint32_t
+_opcode_register(const char *op_name, uint32_t op_id, Opcode_Cb cb)
+{
+   static uint32_t free_opcode = 0;
+   Opcode_Information *op_info = eina_hash_find(_string_to_opcode_hash, op_name);
+   if (!op_info)
+     {
+        op_info = calloc(1, sizeof(*op_info));
+        if (op_id == EINA_DEBUG_OPCODE_INVALID)
+          {
+             do
+               {
+                  op_id = free_opcode++;
+               }
+             while(_opcodes[op_id]);
+          }
+        op_info->opcode = op_id;
+        op_info->opcode_string = eina_stringshare_add(op_name);
+        op_info->cb = cb;
+        eina_hash_add(_string_to_opcode_hash, op_name, op_info);
+        _opcodes[op_id] = op_info;
+     }
+   return op_info->opcode;
+}
+
+static Eina_Bool
+_hello_cb(Ecore_Con_Client *dest, void *buffer, int size EINA_UNUSED)
+{
+   int version = -1; // version of protocol we speak
+   int pid = -1;
+   unsigned char *buf = buffer;
+   buf += sizeof(Eina_Debug_Packet_Header);
+   memcpy(&version, buf, 4);
+   memcpy(&pid, buf + 4, 4);
+   Client *c = ecore_con_client_data_get(dest);
+   c->version = version;
+   c->pid = pid;
+   c->cid = free_cid++;
+   printf("Connection from pid %d\n", pid);
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_cid_get_cb(Ecore_Con_Client *dest, void *buffer, int size)
+{
+   uint32_t pid = *(uint32_t *)((char *)buffer + sizeof(Eina_Debug_Packet_Header));
+   Client *c = _client_pid_find(pid);
+   *(uint32_t *)buffer = c->cid;
+   _client_send(dest, buffer, size);
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_pids_list_cb(Ecore_Con_Client *dest, void *buffer, int size EINA_UNUSED)
+{
+   Client *c;
+   int n = eina_list_count(clients);
+   size = sizeof(Eina_Debug_Packet_Header) + n * sizeof(uint32_t);
+   char *buf = alloca(size);
+   memcpy(buf, buffer, sizeof(Eina_Debug_Packet_Header));
+   uint32_t *pids = (uint32_t *)(buf + sizeof(Eina_Debug_Packet_Header));
+   if (pids)
+     {
+        int i = 0;
+        Eina_List *l;
+        EINA_LIST_FOREACH(clients, l, c)
+          {
+             pids[i] = c->pid;
+             i++;
+          }
+        _client_send(dest, buf, size);
+     }
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_opcode_register_cb(Ecore_Con_Client *dest, void *buffer, int size)
+{
+   char *buf = buffer;
+   buf += sizeof(Eina_Debug_Packet_Header) + sizeof(uint64_t);
+   size -= (sizeof(Eina_Debug_Packet_Header) + sizeof(uint64_t));
+   uint32_t *opcodes = (uint32_t *)buf;
+
+   while (size > 0)
+     {
+        int len = strlen(buf) + 1;
+        *opcodes++ = _opcode_register(buf, EINA_DEBUG_OPCODE_INVALID, NULL);
+        buf += len;
+        size -= len;
+     }
+
+   _client_send(dest, buffer, (char *)opcodes - (char *)buffer);
+
+   return EINA_TRUE;
 }
 
 int
@@ -250,6 +403,12 @@ main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
    ecore_event_handler_add(ECORE_CON_EVENT_CLIENT_ADD, (Ecore_Event_Handler_Cb)_client_add, NULL);
    ecore_event_handler_add(ECORE_CON_EVENT_CLIENT_DEL, (Ecore_Event_Handler_Cb)_client_del, NULL);
    ecore_event_handler_add(ECORE_CON_EVENT_CLIENT_DATA, (Ecore_Event_Handler_Cb)_client_data, NULL);
+
+   _string_to_opcode_hash = eina_hash_string_superfast_new(NULL);
+   _opcode_register("daemon/opcode_register", EINA_DEBUG_OPCODE_REGISTER, _opcode_register_cb);
+   _opcode_register("daemon/opcode_hello", EINA_DEBUG_OPCODE_HELLO, _hello_cb);
+   _opcode_register("daemon/pids_list", EINA_DEBUG_OPCODE_INVALID, _pids_list_cb);
+   _opcode_register("daemon/cid_from_pid", EINA_DEBUG_OPCODE_INVALID, _cid_get_cb);
 
    ecore_main_loop_begin();
 
