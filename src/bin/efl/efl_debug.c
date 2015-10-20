@@ -100,11 +100,14 @@ static void
 _args_handle()
 {
    int i;
-   for (i = 1; i < my_argc; i++)
+   for (i = 1; i < my_argc;)
      {
         Eina_Debug_Client *cl = eina_debug_client_new(_session, 0);
         if (!strcmp(my_argv[i], "list"))
-           eina_debug_session_send(cl, _pid_opcode, NULL, 0);
+          {
+             eina_debug_session_send(cl, _pid_opcode, NULL, 0);
+             i++;
+          }
         else if (i < my_argc - 1)
           {
              const char *op_str = my_argv[i++];
@@ -113,11 +116,10 @@ _args_handle()
              eina_debug_session_send(cl, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
              if ((!strcmp(op_str, "pon")) && (i < (my_argc - 2)))
                {
-                  uint32_t freq = atoi(my_argv[i + 2]);
+                  uint32_t freq = atoi(my_argv[i++]);
                   buf = malloc(sizeof(uint32_t));
                   memcpy(buf, &freq, sizeof(uint32_t));
                   _pending_add(&_poll_on_opcode, buf, sizeof(uint32_t));
-                  i++;
                }
              else if (!strcmp(op_str, "poff"))
                 _pending_add(&_poll_off_opcode, NULL, 0);
