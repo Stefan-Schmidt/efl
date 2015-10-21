@@ -24,7 +24,6 @@ static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _evlog_fetch_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 typedef struct
 {
@@ -140,7 +139,6 @@ static const Eina_Debug_Opcode ops[] =
      {"poll/off",             &_poll_off_opcode,      NULL},
      {"evlog/on",             &_evlog_on_opcode,      NULL},
      {"evlog/off",            &_evlog_off_opcode,     NULL},
-     {"evlog/fetch",          &_evlog_fetch_opcode,   NULL},
      {NULL, NULL, NULL}
 };
 

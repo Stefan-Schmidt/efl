@@ -48,6 +48,8 @@ static int             _evlog_go = 0;
 static Eina_Evlog_Buf *buf; // current event log we are writing events to
 static Eina_Evlog_Buf  buffers[2]; // double-buffer our event log buffers
 
+static FILE *_evlog_file = NULL;
+
 #if defined (HAVE_CLOCK_GETTIME) || defined (EXOTIC_PROVIDE_CLOCK_GETTIME)
 static clockid_t _eina_evlog_time_clock_id = -1;
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -225,11 +227,38 @@ eina_evlog_stop(void)
    eina_spinlock_release(&_evlog_lock);
 }
 
+#if 0
+static Eina_Bool
+_evlog_timer_cb(void *data EINA_UNUSED)
+{
+   if (!_evlog_go) return EINA_FALSE;
+   Eina_Evlog_Buf *evlog = eina_evlog_steal();
+   if ((_evlog_file) && (evlog->top > 0))
+     {
+        unsigned int header[3];
+
+        header[0] = 0xffee211;
+        header[1] = evlog->top;
+        header[2] = evlog->overflow;
+        fwrite(header, 12, 1, _evlog_file);
+        fwrite(evlog->buf, evlog->top, 1, _evlog_file);
+     }
+   return EINA_TRUE;
+}
+#endif
+
 // enable evlog
 static Eina_Bool
 _start_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
+   char path[1024];
+   snprintf(path, sizeof(path), "%s/efl_debug_evlog-%ld.log", getenv("HOME"), (long)getpid());
+   _evlog_file = fopen(path, "wb");
    eina_evlog_start();
+   /* FIXME: should register a timer in the eina debug recv thread */
+#if 0
+   ecore_timer_add(0.2, _evlog_timer_cb, NULL);
+#endif
    return EINA_TRUE;
 }
 
@@ -238,41 +267,14 @@ static Eina_Bool
 _stop_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_stop();
-   return EINA_TRUE;
-}
-
-static unsigned int _fetch_op = 0;
-// fetch the evlog
-static Eina_Bool
-_fetch_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
-{
-   Eina_Evlog_Buf *evlog = eina_evlog_steal();
-   if ((evlog) && (evlog->buf))
-     {
-       /* TODO change it to use current updates */
-       /*
-       char          tmp[12];
-       unsigned int *tmpsize  = (unsigned int *)(tmp + 0);
-       char         *op2 = "EVLG";
-       unsigned int *overflow = (unsigned int *)(tmp + 8);
-
-       *tmpsize = (sizeof(tmp) - 4) + evlog->top;
-       memcpy(tmp + 4, op2, 4);
-       *overflow = evlog->overflow;
-       write(_eina_debug_monitor_service_fd,
-             tmp, sizeof(tmp));
-       write(_eina_debug_monitor_service_fd,
-             evlog->buf, evlog->top);
-*/
-
-     }
+   fclose(_evlog_file);
+   _evlog_file = NULL;
    return EINA_TRUE;
 }
 
 static const Eina_Debug_Opcode _EINA_DEBUG_EVLOG_OPS[] = {
        {"evlog/on", NULL, &_start_cb},
        {"evlog/off", NULL, &_stop_cb},
-       {"evlog/fetch", &_fetch_op, &_fetch_cb},
        {NULL, NULL, NULL}
 };
 
