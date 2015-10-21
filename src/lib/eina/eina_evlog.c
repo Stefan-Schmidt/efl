@@ -227,9 +227,8 @@ eina_evlog_stop(void)
    eina_spinlock_release(&_evlog_lock);
 }
 
-#if 0
 static Eina_Bool
-_evlog_timer_cb(void *data EINA_UNUSED)
+_evlog_timer_cb()
 {
    if (!_evlog_go) return EINA_FALSE;
    Eina_Evlog_Buf *evlog = eina_evlog_steal();
@@ -245,7 +244,6 @@ _evlog_timer_cb(void *data EINA_UNUSED)
      }
    return EINA_TRUE;
 }
-#endif
 
 // enable evlog
 static Eina_Bool
@@ -256,9 +254,7 @@ _start_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size
    _evlog_file = fopen(path, "wb");
    eina_evlog_start();
    /* FIXME: should register a timer in the eina debug recv thread */
-#if 0
-   ecore_timer_add(0.2, _evlog_timer_cb, NULL);
-#endif
+   eina_debug_timer_add(200, _evlog_timer_cb);
    return EINA_TRUE;
 }
 

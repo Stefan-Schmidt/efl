@@ -69,6 +69,8 @@ typedef struct _Eina_Debug_Client Eina_Debug_Client;
 typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
 typedef void (*Eina_Debug_Opcode_Ready_Cb)();
 
+typedef Eina_Bool (*Eina_Debug_Timer_Cb)(void);
+
 typedef struct
 {
    uint32_t size;
@@ -144,6 +146,8 @@ EAPI Eina_Debug_Client *eina_debug_client_new(Eina_Debug_Session *session, int i
 EAPI Eina_Debug_Session *eina_debug_client_session_get(Eina_Debug_Client *cl);
 EAPI int eina_debug_client_id_get(Eina_Debug_Client *cl);
 EAPI void eina_debug_client_free(Eina_Debug_Client *cl);
+
+EAPI Eina_Bool eina_debug_timer_add(unsigned int timeout_ms, Eina_Debug_Timer_Cb cb);
 
 #  define EINA_BT(file) \
    do { \
