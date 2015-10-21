@@ -72,13 +72,18 @@ eina_debug_session_new()
 EAPI void
 eina_debug_session_global_use(void)
 {
-   if(!_eina_debug_session)
-      _eina_debug_session = eina_debug_session_new();
+   if(!_eina_debug_global_session)
+      _eina_debug_global_session = eina_debug_session_new();
 }
 
 EAPI void
 eina_debug_session_free(Eina_Debug_Session *session)
 {
+   _opcode_reply_info *info = NULL;
+
+   EINA_LIST_FREE(session->opcode_reply_infos, info)
+      free(info);
+
    free(session->cbs);
    free(session);
 }
@@ -95,6 +100,12 @@ _eina_debug_sessions_free(void)
         eina_debug_session_free(main_session);
      }
    eina_list_free(sessions);
+}
+
+void
+_eina_debug_set_main_session(Eina_Debug_Session *session)
+{
+   main_session = session;
 }
 
 Eina_Debug_Session *
@@ -131,6 +142,32 @@ eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
 
    if(session->fd > global_max_fd)
       global_max_fd = session->fd;
+
+   eina_spinlock_release(&_eina_debug_thread_lock);
+}
+
+EAPI void
+eina_debug_session_fd_unattach(Eina_Debug_Session *session)
+{
+   eina_spinlock_take(&_eina_debug_thread_lock);
+
+   sessions = eina_list_remove(sessions, session);
+
+   FD_CLR(session->fd, &global_rfds);
+
+   //if its the biggest fd
+   if(session->fd == global_max_fd)
+     {
+        //find the next big
+        Eina_List *l;
+        Eina_Debug_Session *session;
+        int max = 0;
+
+        EINA_LIST_FOREACH(sessions, l, session)
+           if(session->fd > max)
+              max = session->fd;
+        global_max_fd = max;
+     }
 
    eina_spinlock_release(&_eina_debug_thread_lock);
 }
@@ -341,16 +378,29 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
    fd_set rfds, wfds, exfds;
    struct timeval tv = { 0, 0 };
    //try to connect to main session ( will be set if main session diconnect)
-   Eina_Bool main_session_reconnect = EINA_FALSE;
+   Eina_Bool main_session_reconnect = EINA_TRUE;
 
    FD_ZERO(&global_rfds);
-   eina_debug_session_fd_attach(main_session, main_session->fd);
+
    // sit forever processing commands or timeouts in the debug monitor
    // thread - this is separate to the rest of the app so it shouldn't
    // impact the application specifically
    for (;;)
      {
         int i;
+
+        //try to reconnect to main session if disconnected
+        if(main_session_reconnect)
+          {
+             int fd = _eina_debug_monitor_service_connect();
+             if(fd)
+               {
+                  main_session->fd = fd;
+                  main_session_reconnect = EINA_FALSE;
+                  //register all opcodes
+                  eina_debug_opcodes_register_all(main_session);
+               }
+          }
 
         // set up data for select like read fd's
 
@@ -371,16 +421,6 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
              tv.tv_usec = 0;
           }
         ret = select(global_max_fd + 1, &rfds, &wfds, &exfds, &tv);
-        //try to reconnect to main session if disconnected
-        if(main_session_reconnect)
-          {
-             int fd = _eina_debug_monitor_service_connect();
-             if(fd)
-               {
-                  main_session->fd = fd;
-                  main_session_reconnect = EINA_FALSE;
-               }
-          }
         // if the fd for debug daemon says it's alive, process it
         if (ret)
           {
@@ -410,15 +450,14 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
                             //if its main session we try to reconnect
                             else
                               {
-                                 if(session == main_session)
-
+                                 if(session == main_session)//should init opcodes array and tell modules not ready
                                     main_session_reconnect = EINA_TRUE;
 
+                                 eina_debug_session_fd_unattach(session);
+                                 eina_debug_opcodes_unregister(session);
                                  //TODO if its not main session we will tell the main_loop
                                  //that it disconneted
-
                               }
-
                          }
                        ret--;
                     }
@@ -437,13 +476,13 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
 
 // start up the debug monitor if we haven't already
 void
-_eina_debug_monitor_thread_start(Eina_Debug_Session *session)
+_eina_debug_monitor_thread_start()
 {
    int err;
 
    // if it's already running - we're good.
    if (_monitor_thread_runs) return;
-   main_session = session;
+   main_session = eina_debug_session_new();
    // create debug monitor thread
    err = pthread_create(&_monitor_thread, NULL, _eina_debug_monitor, NULL);
    if (err != 0)
@@ -512,6 +551,18 @@ _eina_debug_monitor_service_connect(void)
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
      goto err;
    // we succeeded - store fd
+     // if we connected - set up the debug monitor properly
+   if (fd)
+     {
+        main_session->fd = fd;
+        // say hello to the debug daemon
+        _eina_debug_monitor_service_greet(main_session);
+        // set up our profile signal handler
+        _eina_debug_monitor_signal_init();
+        //register opcodes for monitor
+        _eina_debug_monitor_register_opcodes();
+     }
+   eina_debug_session_fd_attach(main_session, main_session->fd);
    return fd;
 err:
    // some kind of connection failure here, so close a valid socket and

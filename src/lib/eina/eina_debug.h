@@ -67,7 +67,7 @@
 typedef struct _Eina_Debug_Client Eina_Debug_Client;
 
 typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
-typedef void (*Eina_Debug_Opcode_Ready_Cb)();
+typedef void (*Eina_Debug_Opcode_Status_Cb)(Eina_Bool);
 
 typedef Eina_Bool (*Eina_Debug_Timer_Cb)(void);
 
@@ -84,17 +84,25 @@ typedef struct
 
 typedef struct
 {
-   int fd;
-   Eina_Debug_Cb *cbs;
-   unsigned int cbs_length;
-} Eina_Debug_Session;
-
-typedef struct
-{
    char *opcode_name;
    uint32_t *opcode_id;
    Eina_Debug_Cb cb;
 } Eina_Debug_Opcode;
+
+typedef struct
+{
+   const Eina_Debug_Opcode *ops;
+   Eina_Debug_Opcode_Status_Cb status_cb;
+} _opcode_reply_info;
+
+typedef struct
+{
+   int fd;
+   Eina_Debug_Cb *cbs;
+   unsigned int cbs_length;
+   Eina_Bool use_global_cbs;
+   Eina_List *opcode_reply_infos;
+} Eina_Debug_Session;
 
 extern Eina_Spinlock  _eina_debug_lock;
 extern Eina_Spinlock  _eina_debug_thread_lock;
@@ -118,7 +126,7 @@ const char *_eina_debug_file_get(const char *fname);
 
 void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 
-void _eina_debug_monitor_thread_start(Eina_Debug_Session *session);
+void _eina_debug_monitor_thread_start();
 void _eina_debug_monitor_signal_init(void);
 int _eina_debug_monitor_service_connect(void);
 void _eina_debug_monitor_register_opcodes(void);
@@ -129,6 +137,7 @@ EAPI Eina_Debug_Session *eina_debug_session_new(void);
 EAPI void eina_debug_session_free(Eina_Debug_Session *session);
 EAPI void eina_debug_session_global_use(void);
 EAPI void eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd);
+EAPI void eina_debug_session_fd_unattach(Eina_Debug_Session *session);
 
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);
 int  _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer);
@@ -136,7 +145,10 @@ Eina_Debug_Session *_eina_debug_get_main_session();
 /* Last opcode_name in ops is NULL
  * Sends to daemon: pointer of ops followed by list of opcode names seperated by \n
  * */
-EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[], Eina_Debug_Opcode_Ready_Cb ready_cb);
+EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session,
+      const Eina_Debug_Opcode ops[], Eina_Debug_Opcode_Status_Cb status_cb);
+EAPI void eina_debug_opcodes_register_all(Eina_Debug_Session *session);
+EAPI void eina_debug_opcodes_unregister(Eina_Debug_Session *session);
 Eina_Bool eina_debug_register_cb(Eina_Debug_Session *session, void *buffer, int size);
 Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
 EAPI int eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size);
