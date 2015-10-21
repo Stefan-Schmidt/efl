@@ -26,6 +26,8 @@ typedef struct
    int cid;
 } _Eina_Debug_Client;
 
+Eina_Debug_Session *_eina_debug_global_session = NULL;
+
 EAPI Eina_Debug_Client *
 eina_debug_client_new(Eina_Debug_Session *session, int id)
 {
@@ -133,31 +135,21 @@ _eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
         if(os[i] > max_id)
            max_id = os[i];
      }
-   Eina_Debug_Cb **cbs;
-   unsigned int *cbs_length;
 
-   if(!(session->use_global_cbs))
-     {
-        cbs = &(session->cbs);
-        cbs_length = &(session->cbs_length);
-     }
-   else
-     {
-        cbs = &(_eina_debug_cbs);
-        cbs_length = &(_eina_debug_cbs_length);
-     }
+   //if use global session is set we will use the global session opcodes
+   if(_eina_debug_session) session = _eina_debug_session;
 
-   if(*cbs_length < max_id + 1)
+   if(session->cbs_length < max_id + 1)
      {
-        i = *cbs_length;
-        *cbs_length =  max_id + 1;
-        *cbs = realloc(*cbs, *cbs_length);
-        for(; i < *cbs_length; i++)
-           (*cbs)[i] = NULL;
+        i = session->cbs_length;
+        session->cbs_length =  max_id + 1;
+        session->cbs = realloc(session->cbs, session->cbs_length);
+        for(; i < session->cbs_length; i++)
+           session->cbs[i] = NULL;
      }
    for (i = 0; i < count; i++)
      {
-        (*cbs)[os[i]] = info->ops[i].cb;
+        session->cbs[os[i]] = info->ops[i].cb;
      }
    if (info->ready_cb) info->ready_cb();
    free(info);
@@ -170,10 +162,11 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
    Eina_Debug_Packet_Header *hdr =  buffer;
    uint32_t opcode = hdr->opcode;
    Eina_Debug_Cb cb = NULL;
+   Eina_Debug_Session *session_opcodes = _eina_debug_global_session ? _eina_debug_global_session : session;
 
-   if(session && !session->use_global_cbs && (opcode < session->cbs_length))
-      cb = session->cbs[opcode];
-   if(!cb && opcode < _eina_debug_cbs_length) cb = _eina_debug_cbs[opcode];
+   if(opcode < session_opcodes->cbs_length)
+      cb = session_opcodes->cbs[opcode];
+
    if (cb)
      {
         Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);

@@ -87,7 +87,6 @@ typedef struct
    int fd;
    Eina_Debug_Cb *cbs;
    unsigned int cbs_length;
-   Eina_Bool use_global_cbs;
 } Eina_Debug_Session;
 
 typedef struct
@@ -100,8 +99,7 @@ typedef struct
 extern Eina_Spinlock  _eina_debug_lock;
 extern Eina_Spinlock  _eina_debug_thread_lock;
 extern Eina_Semaphore _eina_debug_monitor_return_sem;
-extern Eina_Debug_Cb *_eina_debug_cbs;
-extern unsigned int _eina_debug_cbs_length;
+extern Eina_Debug_Session *_eina_debug_global_session;
 
 EAPI void eina_debug_set_reconnect(Eina_Bool reconnect);
 EAPI Eina_Debug_Session *eina_debug_local_connect(void);
@@ -129,6 +127,7 @@ Eina_Bool _eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer,
 
 EAPI Eina_Debug_Session *eina_debug_session_new(void);
 EAPI void eina_debug_session_free(Eina_Debug_Session *session);
+EAPI void eina_debug_session_global_use(void);
 EAPI void eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd);
 
 void _eina_debug_monitor_service_greet(Eina_Debug_Session *session);

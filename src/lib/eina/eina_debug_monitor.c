@@ -55,24 +55,25 @@ static double _trace_t0 = 0.0;
 static unsigned int poll_time = 0;
 static Eina_Debug_Timer_Cb poll_timer_cb = NULL;
 
-Eina_Debug_Cb *_eina_debug_cbs = NULL;
-unsigned int _eina_debug_cbs_length = 0;
-
 EAPI Eina_Debug_Session *
 eina_debug_session_new()
 {
    Eina_Debug_Session *session = calloc(1, sizeof(Eina_Debug_Session));
-
-   session->use_global_cbs = EINA_FALSE;;
-
+   session->cbs = calloc(8, sizeof(Eina_Debug_Cb));
+   session->cbs_length = 8;
+   session->cbs[EINA_DEBUG_OPCODE_REGISTER] = _eina_debug_callbacks_register_cb;
    return session;
 }
 
+/*
+ * Used only in the daemon. when set each session will use the global
+ * session opcodes.
+ */
 EAPI void
-eina_debug_session_global_cbs_set(Eina_Debug_Session *session,
-      Eina_Bool use_global_cbs)
+eina_debug_session_global_use(void)
 {
-   session->use_global_cbs = use_global_cbs;
+   if(!_eina_debug_session)
+      _eina_debug_session = eina_debug_session_new();
 }
 
 EAPI void

@@ -80,7 +80,6 @@ eina_debug_init(void)
      {
         Eina_Debug_Session *session = eina_debug_session_new();
         session->fd = fd;
-        session->cbs[EINA_DEBUG_OPCODE_REGISTER] = _eina_debug_callbacks_register_cb;
         // say hello to the debug daemon
         _eina_debug_monitor_service_greet(session);
         //register opcodes for monitor
