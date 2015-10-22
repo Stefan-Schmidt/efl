@@ -61,7 +61,7 @@ eina_debug_session_new()
    Eina_Debug_Session *session = calloc(1, sizeof(Eina_Debug_Session));
    session->cbs = calloc(8, sizeof(Eina_Debug_Cb));
    session->cbs_length = 8;
-   session->cbs[EINA_DEBUG_OPCODE_REGISTER] = _eina_debug_callbacks_register_cb;
+   _eina_debug_opcodes_init(session);
    return session;
 }
 

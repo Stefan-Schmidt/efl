@@ -61,12 +61,21 @@ eina_debug_client_free(Eina_Debug_Client *cl)
    free(cl);
 }
 
-EAPI void
-eina_debug_opcodes_unregister(Eina_Debug_Session *session)
+void
+_eina_debug_opcodes_init(Eina_Debug_Session *session)
 {
    unsigned int i;
    for(i = 0; i < session->cbs_length; i++)
       session->cbs[i] = NULL;
+
+   if(session->cbs_length > EINA_DEBUG_OPCODE_REGISTER)
+      session->cbs[EINA_DEBUG_OPCODE_REGISTER] = _eina_debug_callbacks_register_cb;
+}
+
+EAPI void
+eina_debug_opcodes_unregister(Eina_Debug_Session *session)
+{
+   _eina_debug_opcodes_init(session);
 
    Eina_List *l;
    _opcode_reply_info *info = NULL;
@@ -81,10 +90,6 @@ eina_debug_opcodes_unregister(Eina_Debug_Session *session)
 EAPI void
 eina_debug_opcodes_register_all(Eina_Debug_Session *session)
 {
-   unsigned int i;
-   for(i = 0; i < session->cbs_length; i++)
-      session->cbs[i] = NULL;
-
    Eina_List *l;
    _opcode_reply_info *info = NULL;
 
