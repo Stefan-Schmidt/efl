@@ -43,10 +43,7 @@ static int                *_bt_cpu;
 
 static Eina_Debug_Session *main_session = NULL;
 static Eina_List *sessions = NULL;
-//instead of doing FD_SET each time before select.
-//we save in it in global variable and just copy it.
-static fd_set global_rfds;
-static int global_max_fd = 0;
+static int _epfd = 0, _eventfd = 0;
 
 /* Used by trace timer */
 static double _trace_t0 = 0.0;
@@ -138,10 +135,16 @@ eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
    if(!_eina_debug_session_find_by_fd(fd))
       sessions = eina_list_append(sessions, session);
 
-   FD_SET(session->fd, &global_rfds);
+   struct epoll_event event;
 
-   if(session->fd > global_max_fd)
-      global_max_fd = session->fd;
+   event.data.fd = fd;
+   event.events = EPOLLIN ;
+   int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, fd, &event);
+   if (ret)
+      perror ("epoll_ctl");
+
+   //wakeup the epoll
+   eventfd_write(_eventfd, 1);
 
    eina_spinlock_release(&_eina_debug_thread_lock);
 }
@@ -153,21 +156,9 @@ eina_debug_session_fd_unattach(Eina_Debug_Session *session)
 
    sessions = eina_list_remove(sessions, session);
 
-   FD_CLR(session->fd, &global_rfds);
-
-   //if its the biggest fd
-   if(session->fd == global_max_fd)
-     {
-        //find the next big
-        Eina_List *l;
-        Eina_Debug_Session *session;
-        int max = 0;
-
-        EINA_LIST_FOREACH(sessions, l, session)
-           if(session->fd > max)
-              max = session->fd;
-        global_max_fd = max;
-     }
+   int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd, NULL);
+   if (ret)
+      perror ("epoll_ctl");
 
    eina_spinlock_release(&_eina_debug_thread_lock);
 }
@@ -367,6 +358,8 @@ eina_debug_timer_add(unsigned int timeout_ms, Eina_Debug_Timer_Cb cb)
    return EINA_TRUE;
 }
 
+#define MAX_EVENTS   16
+
 // this is a DEDICATED debug thread to monitor the application so it works
 // even if the mainloop is blocked or the app otherwise deadlocked in some
 // way. this is an alternative to using external debuggers so we can get
@@ -375,12 +368,10 @@ static void *
 _eina_debug_monitor(void *_data EINA_UNUSED)
 {
    int ret;
-   fd_set rfds, wfds, exfds;
-   struct timeval tv = { 0, 0 };
    //try to connect to main session ( will be set if main session diconnect)
    Eina_Bool main_session_reconnect = EINA_TRUE;
 
-   FD_ZERO(&global_rfds);
+   struct epoll_event events[MAX_EVENTS];
 
    //register opcodes for monitor - should be only once
    _eina_debug_monitor_register_opcodes();
@@ -393,7 +384,7 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
    for (;;)
      {
         int i;
-
+        int timeout = -1; //in milliseconds
         //try to reconnect to main session if disconnected
         if(main_session_reconnect)
           {
@@ -411,65 +402,71 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
                }
           }
 
-        // set up data for select like read fd's
 
-        FD_ZERO(&wfds);
-        FD_ZERO(&exfds);
-        rfds = global_rfds;
+
         // if we are in a polling mode then set up a timeout and wait for it
         if (poll_time)
           {
-             tv.tv_sec = 0;
-             tv.tv_usec = poll_time;
+             timeout = poll_time;
           }
         else
           {
-             //if we are not in polling mode set a timeout so we could update the
-             //fd vector and try to reconnect to main_session if needed
-             tv.tv_sec = 2;
-             tv.tv_usec = 0;
+             //if we are not in polling mode set a timeout
+             //so we could reconnect to main_session
+             if(main_session_reconnect)
+                timeout = 2000;
           }
-        ret = select(global_max_fd + 1, &rfds, &wfds, &exfds, &tv);
+        ret = epoll_wait (_epfd, events, MAX_EVENTS, timeout);
+
         // if the fd for debug daemon says it's alive, process it
         if (ret)
           {
              //check which fd are set/ready for read
-             for (i = 0; i < FD_SETSIZE && ret; ++i)
+             for (i = 0; i < ret; i++)
                {
-                  if (FD_ISSET (i, &rfds))
+                  if (events[i].events & EPOLLIN)
                     {
                        int size;
                        unsigned char *buffer;
-                       Eina_Debug_Session *session = _eina_debug_session_find_by_fd(i);
-                       if(session)
-                         {
-                            size = _eina_debug_session_receive(session, &buffer);
-                            // if not negative - we have a real message
-                            if (size >= 0)
-                              {
-                                 // something we don't understand
-                                 if(!eina_debug_dispatch(main_session, buffer))
-                                    fprintf(stderr,
-                                          "EINA DEBUG ERROR: "
-                                          "Uunknown command \n");
-                                 free(buffer);
-                              }
-                            // major failure on debug daemon control fd - get out of here.
-                            //   else goto fail;
-                            //if its main session we try to reconnect
-                            else
-                              {
-                                 if(session == main_session)//should init opcodes array and tell modules not ready
-                                    main_session_reconnect = EINA_TRUE;
 
-                                 eina_debug_session_fd_unattach(session);
-                                 eina_debug_opcodes_unregister(session);
-                                 session->fd = -1;
-                                 //TODO if its not main session we will tell the main_loop
-                                 //that it disconneted
-                              }
+                       //someone woke us up
+                       if(events[i].data.fd == _eventfd)
+                         {
+                            eventfd_t val;
+                            eventfd_read(_eventfd, &val);
+                            continue;
                          }
-                       ret--;
+
+                       Eina_Debug_Session *session =
+                          _eina_debug_session_find_by_fd(events[i].data.fd);
+                       if(session)
+                          {
+                             size = _eina_debug_session_receive(session, &buffer);
+                             // if not negative - we have a real message
+                             if (size >= 0)
+                               {
+                                  // something we don't understand
+                                  if(!eina_debug_dispatch(main_session, buffer))
+                                     fprintf(stderr,
+                                           "EINA DEBUG ERROR: "
+                                           "Uunknown command \n");
+                                  free(buffer);
+                               }
+                             // major failure on debug daemon control fd - get out of here.
+                             //   else goto fail;
+                             //if its main session we try to reconnect
+                             else
+                               {
+                                  if(session == main_session)
+                                     main_session_reconnect = EINA_TRUE;
+
+                                  eina_debug_session_fd_unattach(session);
+                                  eina_debug_opcodes_unregister(session);
+                                  session->fd = -1;
+                                  //TODO if its not main session we will tell the main_loop
+                                  //that it disconneted
+                               }
+                          }
                     }
                }
           }
@@ -493,6 +490,15 @@ _eina_debug_monitor_thread_start()
    // if it's already running - we're good.
    if (_monitor_thread_runs) return;
    main_session = eina_debug_session_new();
+   _epfd = epoll_create (MAX_EVENTS);
+   //create the eventfd to wakeup the epoll before timeout ends
+   _eventfd = eventfd(0, EFD_NONBLOCK);
+   struct epoll_event event = {0};
+   event.data.fd = _eventfd;
+   event.events = EPOLLIN;
+   int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, _eventfd, &event);
+   if (ret)
+      perror ("epoll_ctl");
    // create debug monitor thread
    err = pthread_create(&_monitor_thread, NULL, _eina_debug_monitor, NULL);
    if (err != 0)
