@@ -382,6 +382,11 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
 
    FD_ZERO(&global_rfds);
 
+   //register opcodes for monitor - should be only once
+   _eina_debug_monitor_register_opcodes();
+   // set up our profile signal handler
+   _eina_debug_monitor_signal_init();
+
    // sit forever processing commands or timeouts in the debug monitor
    // thread - this is separate to the rest of the app so it shouldn't
    // impact the application specifically
@@ -393,12 +398,16 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
         if(main_session_reconnect)
           {
              int fd = _eina_debug_monitor_service_connect();
+     // if we connected - set up the debug monitor properly
              if(fd)
                {
                   main_session->fd = fd;
                   main_session_reconnect = EINA_FALSE;
+                  // say hello to the debug daemon
+                  _eina_debug_monitor_service_greet(main_session);
                   //register all opcodes
                   eina_debug_opcodes_register_all(main_session);
+                  eina_debug_session_fd_attach(main_session, main_session->fd);
                }
           }
 
@@ -455,6 +464,7 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
 
                                  eina_debug_session_fd_unattach(session);
                                  eina_debug_opcodes_unregister(session);
+                                 session->fd = -1;
                                  //TODO if its not main session we will tell the main_loop
                                  //that it disconneted
                               }
@@ -551,18 +561,6 @@ _eina_debug_monitor_service_connect(void)
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
      goto err;
    // we succeeded - store fd
-     // if we connected - set up the debug monitor properly
-   if (fd)
-     {
-        main_session->fd = fd;
-        // say hello to the debug daemon
-        _eina_debug_monitor_service_greet(main_session);
-        // set up our profile signal handler
-        _eina_debug_monitor_signal_init();
-        //register opcodes for monitor
-        _eina_debug_monitor_register_opcodes();
-     }
-   eina_debug_session_fd_attach(main_session, main_session->fd);
    return fd;
 err:
    // some kind of connection failure here, so close a valid socket and
@@ -579,6 +577,7 @@ eina_debug_local_connect(void)
    if (fd)
      {
         session = eina_debug_session_new();
+        _eina_debug_monitor_service_greet(main_session);
         eina_debug_session_fd_attach(session, fd);
      }
    return session;

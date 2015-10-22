@@ -126,7 +126,9 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
    session_opcodes->opcode_reply_infos = eina_list_append(
          session_opcodes->opcode_reply_infos, info);
 
-   _eina_debug_opcodes_register_by_reply_info(session, info);
+   //send only if session's fd connected, if not -  it will be sent when connected
+   if(session->fd)
+      _eina_debug_opcodes_register_by_reply_info(session, info);
 }
 
 static void

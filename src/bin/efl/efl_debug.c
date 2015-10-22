@@ -96,7 +96,7 @@ _pids_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
 }
 
 static void
-_args_handle()
+_args_handle(Eina_Bool flag)
 {
    int i;
    for (i = 1; i < my_argc;)
