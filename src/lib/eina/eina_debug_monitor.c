@@ -41,6 +41,7 @@ static int                *_bt_buf_len;
 static struct timespec    *_bt_ts;
 static int                *_bt_cpu;
 
+static Eina_Bool _reconnect = EINA_TRUE;
 static Eina_Debug_Session *main_session = NULL;
 static Eina_List *sessions = NULL;
 static int _epfd = 0, _eventfd = 0;
@@ -52,14 +53,16 @@ static double _trace_t0 = 0.0;
 static unsigned int poll_time = 0;
 static Eina_Debug_Timer_Cb poll_timer_cb = NULL;
 
+EAPI void
+eina_debug_set_reconnect(Eina_Bool reconnect)
+{
+   _reconnect = reconnect;
+}
+
 EAPI Eina_Debug_Session *
 eina_debug_session_new()
 {
-   Eina_Debug_Session *session = calloc(1, sizeof(Eina_Debug_Session));
-   session->cbs = calloc(8, sizeof(Eina_Debug_Cb));
-   session->cbs_length = 8;
-   _eina_debug_opcodes_init(session);
-   return session;
+   return calloc(1, sizeof(Eina_Debug_Session));
 }
 
 /*
@@ -124,8 +127,8 @@ _eina_debug_session_find_by_fd(int fd)
    return NULL;
 }
 
-EAPI void
-eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
+static void
+_session_fd_attach(Eina_Debug_Session *session, int fd)
 {
    eina_spinlock_take(&_eina_debug_thread_lock);
 
@@ -149,8 +152,8 @@ eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
    eina_spinlock_release(&_eina_debug_thread_lock);
 }
 
-EAPI void
-eina_debug_session_fd_unattach(Eina_Debug_Session *session)
+static void
+_session_fd_unattach(Eina_Debug_Session *session)
 {
    eina_spinlock_take(&_eina_debug_thread_lock);
 
@@ -386,19 +389,18 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
         int i;
         int timeout = -1; //in milliseconds
         //try to reconnect to main session if disconnected
-        if(main_session_reconnect)
+        if(_reconnect && main_session_reconnect)
           {
              int fd = _eina_debug_monitor_service_connect();
      // if we connected - set up the debug monitor properly
              if(fd)
                {
-                  main_session->fd = fd;
+                  _session_fd_attach(main_session, main_session->fd);
                   main_session_reconnect = EINA_FALSE;
                   // say hello to the debug daemon
                   _eina_debug_monitor_service_greet(main_session);
                   //register all opcodes
                   eina_debug_opcodes_register_all(main_session);
-                  eina_debug_session_fd_attach(main_session, main_session->fd);
                }
           }
 
@@ -460,7 +462,7 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
                                   if(session == main_session)
                                      main_session_reconnect = EINA_TRUE;
 
-                                  eina_debug_session_fd_unattach(session);
+                                  _session_fd_unattach(session);
                                   eina_debug_opcodes_unregister(session);
                                   session->fd = -1;
                                   //TODO if its not main session we will tell the main_loop
@@ -583,8 +585,9 @@ eina_debug_local_connect(void)
    if (fd)
      {
         session = eina_debug_session_new();
-        _eina_debug_monitor_service_greet(main_session);
-        eina_debug_session_fd_attach(session, fd);
+        _eina_debug_monitor_service_greet(session);
+        _session_fd_attach(session, fd);
+        eina_debug_opcodes_register_all(session);
      }
    return session;
 }

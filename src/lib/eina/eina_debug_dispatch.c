@@ -35,7 +35,7 @@ Eina_Debug_Session *_eina_debug_global_session = NULL;
 EAPI Eina_Debug_Client *
 eina_debug_client_new(Eina_Debug_Session *session, int id)
 {
-   _Eina_Debug_Client *cl = calloc(1, sizeof(*cl));
+   _Eina_Debug_Client *cl = calloc(1, sizeof(_Eina_Debug_Client));
    cl->session = session;
    cl->cid = id;
    return (Eina_Debug_Client *)cl;
@@ -62,43 +62,54 @@ eina_debug_client_free(Eina_Debug_Client *cl)
 }
 
 void
-_eina_debug_opcodes_init(Eina_Debug_Session *session)
-{
-   unsigned int i;
-   for(i = 0; i < session->cbs_length; i++)
-      session->cbs[i] = NULL;
-
-   if(session->cbs_length > EINA_DEBUG_OPCODE_REGISTER)
-      session->cbs[EINA_DEBUG_OPCODE_REGISTER] = _eina_debug_callbacks_register_cb;
-}
-
-EAPI void
 eina_debug_opcodes_unregister(Eina_Debug_Session *session)
 {
-   _eina_debug_opcodes_init(session);
+   free(session->cbs);
+   session->cbs_length = 0;
+   session->cbs = NULL;
 
    Eina_List *l;
    _opcode_reply_info *info = NULL;
 
-   if(_eina_debug_global_session)
-        session = _eina_debug_global_session;
-
    EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
-      if (info->status_cb) info->status_cb(EINA_FALSE);
+     {
+        const Eina_Debug_Opcode *op = info->ops;
+        while(!op->opcode_name)
+          {
+             if (op->opcode_id) *(op->opcode_id) = EINA_DEBUG_OPCODE_INVALID;
+             op++;
+          }
+        if (info->status_cb) info->status_cb(EINA_FALSE);
+     }
 }
 
-EAPI void
+void
 eina_debug_opcodes_register_all(Eina_Debug_Session *session)
 {
    Eina_List *l;
    _opcode_reply_info *info = NULL;
 
-   Eina_Debug_Session *session_opcodes = session;
-   if(_eina_debug_global_session)
-        session_opcodes = _eina_debug_global_session;
-
-   EINA_LIST_FOREACH(session_opcodes->opcode_reply_infos, l, info)
+   eina_debug_static_opcode_register(session,
+         EINA_DEBUG_OPCODE_REGISTER, _eina_debug_callbacks_register_cb);
+   EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
         _eina_debug_opcodes_register_by_reply_info(session, info);;
+}
+
+EAPI void
+eina_debug_static_opcode_register(Eina_Debug_Session *session,
+      uint32_t op_id, Eina_Debug_Cb cb)
+{
+   if(_eina_debug_global_session) session = _eina_debug_global_session;
+
+   if(session->cbs_length < op_id + 1)
+     {
+        unsigned int i = session->cbs_length;
+        session->cbs_length = op_id + 16;
+        session->cbs = realloc(session->cbs, session->cbs_length * sizeof(Eina_Debug_Cb));
+        for(; i < session->cbs_length; i++)
+           session->cbs[i] = NULL;
+     }
+   session->cbs[op_id] = cb;
 }
 
 /*
@@ -188,30 +199,11 @@ _eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
    unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
 
    unsigned int i;
-   unsigned int max_id = 0;
 
    for (i = 0; i < count; i++)
      {
         if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
-
-        if(os[i] > max_id)
-           max_id = os[i];
-     }
-
-   //if use global session is set we will use the global session opcodes
-   if(_eina_debug_global_session) session = _eina_debug_global_session;
-
-   if(session->cbs_length < max_id + 1)
-     {
-        i = session->cbs_length;
-        session->cbs_length =  max_id + 1;
-        session->cbs = realloc(session->cbs, session->cbs_length);
-        for(; i < session->cbs_length; i++)
-           session->cbs[i] = NULL;
-     }
-   for (i = 0; i < count; i++)
-     {
-        session->cbs[os[i]] = info->ops[i].cb;
+        eina_debug_static_opcode_register(session, os[i], info->ops[i].cb);
      }
    if (info->status_cb) info->status_cb(EINA_TRUE);
 
@@ -234,6 +226,7 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
         Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);
         cb(cl, (unsigned char *)buffer + sizeof(*hdr), hdr->size + sizeof(uint32_t) - sizeof(*hdr));
         eina_debug_client_free(cl);
+        return EINA_TRUE;
      }
    return EINA_FALSE;
 }

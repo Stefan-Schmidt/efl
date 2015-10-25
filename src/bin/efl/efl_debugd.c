@@ -271,6 +271,7 @@ _opcode_register_cb(Ecore_Con_Client *dest, void *buffer, int size)
 int
 main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
 {
+   eina_debug_set_reconnect(EINA_FALSE);
    eina_init();
    ecore_init();
    ecore_con_init();

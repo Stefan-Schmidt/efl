@@ -35,7 +35,6 @@ Eina_Spinlock _eina_debug_lock;
 
 // only init once
 static Eina_Bool _inited = EINA_FALSE;
-static Eina_Bool _reconnect = EINA_TRUE;
 
 extern Eina_Bool eina_module_init(void);
 extern Eina_Bool eina_mempool_init(void);
@@ -46,8 +45,6 @@ eina_debug_init(void)
 {
    pthread_t self;
 
-   if(!_reconnect)
-      return EINA_TRUE;
    // if already inbitted simply release our lock that we may have locked on
    // shutdown if we are re-initted again in the same process
    if (_inited)
@@ -86,12 +83,6 @@ eina_debug_shutdown(void)
    // never exits. this is not a leak - we intend to never free up any
    // resources here because they are allocated once only ever.
    return EINA_TRUE;
-}
-
-EAPI void
-eina_debug_set_reconnect(Eina_Bool reconnect)
-{
-   _reconnect = reconnect;
 }
 
 #else
