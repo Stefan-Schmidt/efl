@@ -40,15 +40,15 @@ extern Eina_Bool eina_list_init(void);
 
 #define MAX_EVENTS   16
 
-extern Eina_Spinlock  _eina_debug_thread_lock;
-extern pthread_t            _eina_debug_thread_mainloop;
-extern volatile pthread_t  *_eina_debug_thread_active;
-extern volatile int         _eina_debug_thread_active_num;
+extern Eina_Spinlock      _eina_debug_thread_lock;
+extern pthread_t          _eina_debug_thread_mainloop;
+extern volatile pthread_t *_eina_debug_thread_active;
+extern volatile int       _eina_debug_thread_active_num;
 
-Eina_Semaphore         _eina_debug_monitor_return_sem;
+Eina_Semaphore _eina_debug_monitor_return_sem;
 
-static Eina_Bool       _monitor_thread_runs = EINA_FALSE;
-static pthread_t       _monitor_thread;
+static Eina_Bool _monitor_thread_runs = EINA_FALSE;
+static pthread_t _monitor_thread;
 
 // _bt_buf[0] is always for mainloop, 1 + is for extra threads
 static void             ***_bt_buf;
@@ -56,7 +56,7 @@ static int                *_bt_buf_len;
 static struct timespec    *_bt_ts;
 static int                *_bt_cpu;
 
-static Eina_Bool _reconnect = EINA_TRUE;
+static Eina_Bool _local_reconnect_enabled = EINA_TRUE;
 static Eina_Debug_Session *main_session = NULL;
 static Eina_List *sessions = NULL;
 static int _epfd = 0, _eventfd = 0;
@@ -68,29 +68,27 @@ static double _trace_t0 = 0.0;
 static unsigned int poll_time = 0;
 static Eina_Debug_Timer_Cb poll_timer_cb = NULL;
 
-static void
-_eina_debug_opcodes_register_by_reply_info(Eina_Debug_Session *session,
-      _opcode_reply_info *info);
-
 typedef struct
+{
+   const Eina_Debug_Opcode *ops;
+   Eina_Debug_Opcode_Status_Cb status_cb;
+} _opcode_reply_info;
+
+struct _Eina_Debug_Session
+{
+   int fd;
+   Eina_Debug_Cb *cbs;
+   unsigned int cbs_length;
+   Eina_List *opcode_reply_infos;
+};
+
+struct _Eina_Debug_Client
 {
    Eina_Debug_Session *session;
    int cid;
-} _Eina_Debug_Client;
+};
 
-Eina_Debug_Session *_eina_debug_global_session = NULL;
-
-void
-_eina_debug_set_main_session(Eina_Debug_Session *session)
-{
-   main_session = session;
-}
-
-Eina_Debug_Session *
-_eina_debug_get_main_session()
-{
-   return main_session;
-}
+Eina_Debug_Session *_global_session = NULL;
 
 EAPI int
 eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size)
@@ -98,8 +96,7 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    if (!dest) return -1;
    Eina_Debug_Session *session = eina_debug_client_session_get(dest);
 
-   if(!session)
-      session = _eina_debug_get_main_session();
+   if(!session) session = main_session;
 
    if (!session) return -1;
    // send protocol packet. all protocol is an int for size of packet then
@@ -115,7 +112,7 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    return write(session->fd, buf, hdr->size + sizeof(uint32_t));
 }
 
-void
+static void
 _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
 {
    // say hello to our debug daemon - tell them our PID and protocol
@@ -123,14 +120,14 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
    unsigned char buf[8];
    int version = 1; // version of protocol we speak
    int pid = getpid();
-   memcpy(buf +  0, &version, 4);
-   memcpy(buf +  4, &pid, 4);
+   memcpy(buf + 0, &version, 4);
+   memcpy(buf + 4, &pid, 4);
    Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
    eina_debug_session_send(cl, EINA_DEBUG_OPCODE_HELLO, buf, sizeof(buf));
    eina_debug_client_free(cl);
 }
 
-int
+static int
 _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 {
    uint32_t size;
@@ -178,10 +175,11 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    return -1;
 }
+
 EAPI void
-eina_debug_set_reconnect(Eina_Bool reconnect)
+eina_debug_reconnect_set(Eina_Bool reconnect)
 {
-   _reconnect = reconnect;
+   _local_reconnect_enabled = reconnect;
 }
 
 EAPI Eina_Debug_Session *
@@ -197,8 +195,8 @@ eina_debug_session_new()
 EAPI void
 eina_debug_session_global_use(void)
 {
-   if(!_eina_debug_global_session)
-      _eina_debug_global_session = eina_debug_session_new();
+   if(!_global_session)
+      _global_session = eina_debug_session_new();
 }
 
 EAPI void
@@ -243,7 +241,7 @@ _eina_debug_session_find_by_fd(int fd)
 static void
 _session_fd_attach(Eina_Debug_Session *session, int fd)
 {
-   eina_spinlock_take(&_eina_debug_thread_lock);
+   eina_spinlock_take(&_eina_debug_lock);
 
    session->fd = fd;
 
@@ -262,13 +260,13 @@ _session_fd_attach(Eina_Debug_Session *session, int fd)
    //wakeup the epoll
    eventfd_write(_eventfd, 1);
 
-   eina_spinlock_release(&_eina_debug_thread_lock);
+   eina_spinlock_release(&_eina_debug_lock);
 }
 
 static void
 _session_fd_unattach(Eina_Debug_Session *session)
 {
-   eina_spinlock_take(&_eina_debug_thread_lock);
+   eina_spinlock_take(&_eina_debug_lock);
 
    sessions = eina_list_remove(sessions, session);
 
@@ -276,7 +274,7 @@ _session_fd_unattach(Eina_Debug_Session *session)
    if (ret)
       perror ("epoll_ctl");
 
-   eina_spinlock_release(&_eina_debug_thread_lock);
+   eina_spinlock_release(&_eina_debug_lock);
 }
 
 // a backtracer that uses libunwind to do the job
@@ -460,10 +458,110 @@ static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
        {NULL, NULL, NULL}
 };
 
-void
-_eina_debug_monitor_register_opcodes(void)
+static void
+_opcodes_register(void)
 {
    eina_debug_opcodes_register(NULL, _EINA_DEBUG_MONITOR_OPS, NULL);
+}
+
+/* Expecting pointer of ops followed by list of uint32's */
+static Eina_Bool
+_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
+{
+   Eina_Debug_Session *session = eina_debug_client_session_get(cl);
+   _opcode_reply_info *info = NULL;
+
+   memcpy(&info, buffer, sizeof(uint64_t));
+
+   if (!info) return EINA_FALSE;
+
+   uint32_t *os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
+   unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
+
+   unsigned int i;
+
+   for (i = 0; i < count; i++)
+     {
+        if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
+        eina_debug_static_opcode_register(session, os[i], info->ops[i].cb);
+     }
+   if (info->status_cb) info->status_cb(EINA_TRUE);
+
+   return EINA_TRUE;
+}
+
+static void
+_opcodes_register_by_reply_info(Eina_Debug_Session *session,
+      _opcode_reply_info *info)
+{
+    unsigned char *buf;
+
+   int count = 0;
+   int size = sizeof(uint64_t);
+
+   if(!session) session = main_session;
+   if(!session) return;
+
+   while(info->ops[count].opcode_name)
+     {
+        size += strlen(info->ops[count].opcode_name) + 1;
+        count++;
+     }
+
+   buf = alloca(size);
+
+   memcpy(buf, &info, sizeof(uint64_t));
+   int size_curr = sizeof(uint64_t);
+
+   count = 0;
+   while(info->ops[count].opcode_name)
+     {
+        int len = strlen(info->ops[count].opcode_name) + 1;
+        memcpy(buf + size_curr, info->ops[count].opcode_name, len);
+        size_curr += len;
+        count++;
+     }
+
+   Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
+   eina_debug_session_send(cl,
+         EINA_DEBUG_OPCODE_REGISTER,
+         buf,
+         size);
+   eina_debug_client_free(cl);
+}
+
+static void
+_opcodes_register_all(Eina_Debug_Session *session)
+{
+   Eina_List *l;
+   _opcode_reply_info *info = NULL;
+
+   eina_debug_static_opcode_register(session,
+         EINA_DEBUG_OPCODE_REGISTER, _callbacks_register_cb);
+   EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
+        _opcodes_register_by_reply_info(session, info);;
+}
+
+static void
+_opcodes_unregister_all(Eina_Debug_Session *session)
+{
+   free(session->cbs);
+   session->cbs_length = 0;
+   session->cbs = NULL;
+
+   Eina_List *l;
+   _opcode_reply_info *info = NULL;
+
+   EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
+     {
+        const Eina_Debug_Opcode *op = info->ops;
+        while(!op->opcode_name)
+          {
+             if (op->opcode_id) *(op->opcode_id) = EINA_DEBUG_OPCODE_INVALID;
+             op++;
+          }
+        if (info->status_cb) info->status_cb(EINA_FALSE);
+     }
 }
 
 static const char *
@@ -476,14 +574,14 @@ _socket_home_get()
    return dir;
 }
 
-// connect to efl_debugd
-int
-_eina_debug_monitor_service_connect(void)
+EAPI Eina_Bool
+eina_debug_local_connect(Eina_Debug_Session *session)
 {
    char buf[4096];
    int fd, socket_unix_len, curstate = 0;
    struct sockaddr_un socket_unix;
 
+   if (!session) return EINA_FALSE;
    // try this socket file - it will likely be:
    //   ~/.ecore/efl_debug/0
    // or maybe
@@ -509,13 +607,16 @@ _eina_debug_monitor_service_connect(void)
    // actually conenct to efl_debugd service
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
      goto err;
-   // we succeeded - store fd
-   return fd;
+   // we succeeded
+   _eina_debug_monitor_service_greet(session);
+   _session_fd_attach(session, fd);
+   _opcodes_register_all(session);
+   return EINA_TRUE;
 err:
    // some kind of connection failure here, so close a valid socket and
    // get out of here
    if (fd >= 0) close(fd);
-   return 0;
+   return EINA_FALSE;
 }
 
 EAPI Eina_Bool
@@ -526,68 +627,8 @@ eina_debug_timer_add(unsigned int timeout_ms, Eina_Debug_Timer_Cb cb)
    return EINA_TRUE;
 }
 
-/* Expecting pointer of ops followed by list of uint32's */
-Eina_Bool
-_eina_debug_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
-{
-   Eina_Debug_Session *session = eina_debug_client_session_get(cl);
-   _opcode_reply_info *info = NULL;
-
-   memcpy(&info, buffer, sizeof(uint64_t));
-
-   if (!info) return EINA_FALSE;
-
-   uint32_t *os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
-   unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
-
-   unsigned int i;
-
-   for (i = 0; i < count; i++)
-     {
-        if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
-        eina_debug_static_opcode_register(session, os[i], info->ops[i].cb);
-     }
-   if (info->status_cb) info->status_cb(EINA_TRUE);
-
-   return EINA_TRUE;
-}
-
-void
-eina_debug_opcodes_register_all(Eina_Debug_Session *session)
-{
-   Eina_List *l;
-   _opcode_reply_info *info = NULL;
-
-   eina_debug_static_opcode_register(session,
-         EINA_DEBUG_OPCODE_REGISTER, _eina_debug_callbacks_register_cb);
-   EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
-        _eina_debug_opcodes_register_by_reply_info(session, info);;
-}
-
-void
-eina_debug_opcodes_unregister(Eina_Debug_Session *session)
-{
-   free(session->cbs);
-   session->cbs_length = 0;
-   session->cbs = NULL;
-
-   Eina_List *l;
-   _opcode_reply_info *info = NULL;
-
-   EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
-     {
-        const Eina_Debug_Opcode *op = info->ops;
-        while(!op->opcode_name)
-          {
-             if (op->opcode_id) *(op->opcode_id) = EINA_DEBUG_OPCODE_INVALID;
-             op++;
-          }
-        if (info->status_cb) info->status_cb(EINA_FALSE);
-     }
-}
-
 static void
-_eina_debug_monitor_signal_init(void)
+_signal_init(void)
 {
    struct sigaction sa;
 
@@ -605,7 +646,7 @@ _eina_debug_monitor_signal_init(void)
 // way. this is an alternative to using external debuggers so we can get
 // users or developers to get useful information about an app at all times
 static void *
-_eina_debug_monitor(void *_data EINA_UNUSED)
+_monitor(void *_data EINA_UNUSED)
 {
    int ret;
    //try to connect to main session ( will be set if main session diconnect)
@@ -614,34 +655,22 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
    struct epoll_event events[MAX_EVENTS];
 
    //register opcodes for monitor - should be only once
-   _eina_debug_monitor_register_opcodes();
+   _opcodes_register();
    // set up our profile signal handler
-   _eina_debug_monitor_signal_init();
+   _signal_init();
 
    // sit forever processing commands or timeouts in the debug monitor
    // thread - this is separate to the rest of the app so it shouldn't
    // impact the application specifically
    for (;;)
      {
-        int i;
         int timeout = -1; //in milliseconds
         //try to reconnect to main session if disconnected
-        if(_reconnect && main_session_reconnect)
+        if(_local_reconnect_enabled && main_session_reconnect)
           {
-             int fd = _eina_debug_monitor_service_connect();
-     // if we connected - set up the debug monitor properly
-             if(fd)
-               {
-                  _session_fd_attach(main_session, main_session->fd);
-                  main_session_reconnect = EINA_FALSE;
-                  // say hello to the debug daemon
-                  _eina_debug_monitor_service_greet(main_session);
-                  //register all opcodes
-                  eina_debug_opcodes_register_all(main_session);
-               }
+             if (eina_debug_local_connect(main_session))
+                main_session_reconnect = EINA_FALSE;
           }
-
-
 
         // if we are in a polling mode then set up a timeout and wait for it
         if (poll_time)
@@ -660,6 +689,7 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
         // if the fd for debug daemon says it's alive, process it
         if (ret)
           {
+             int i;
              //check which fd are set/ready for read
              for (i = 0; i < ret; i++)
                {
@@ -700,7 +730,7 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
                                      main_session_reconnect = EINA_TRUE;
 
                                   _session_fd_unattach(session);
-                                  eina_debug_opcodes_unregister(session);
+                                  _opcodes_unregister_all(session);
                                   session->fd = -1;
                                   //TODO if its not main session we will tell the main_loop
                                   //that it disconneted
@@ -721,8 +751,8 @@ _eina_debug_monitor(void *_data EINA_UNUSED)
 }
 
 // start up the debug monitor if we haven't already
-void
-_eina_debug_monitor_thread_start()
+static void
+_thread_start()
 {
    int err;
 
@@ -739,7 +769,7 @@ _eina_debug_monitor_thread_start()
    if (ret)
       perror ("epoll_ctl");
    // create debug monitor thread
-   err = pthread_create(&_monitor_thread, NULL, _eina_debug_monitor, NULL);
+   err = pthread_create(&_monitor_thread, NULL, _monitor, NULL);
    if (err != 0)
      {
         fprintf(stderr, "EINA DEBUG ERROR: Can't create debug thread!\n");
@@ -748,42 +778,25 @@ _eina_debug_monitor_thread_start()
    else _monitor_thread_runs = EINA_TRUE;
 }
 
-EAPI Eina_Debug_Session *
-eina_debug_local_connect(void)
-{
-   Eina_Debug_Session *session = NULL;
-   int fd = _eina_debug_monitor_service_connect();
-   if (fd)
-     {
-        session = eina_debug_session_new();
-        _eina_debug_monitor_service_greet(session);
-        _session_fd_attach(session, fd);
-        eina_debug_opcodes_register_all(session);
-     }
-   return session;
-}
-
 EAPI Eina_Debug_Client *
 eina_debug_client_new(Eina_Debug_Session *session, int id)
 {
-   _Eina_Debug_Client *cl = calloc(1, sizeof(_Eina_Debug_Client));
+   Eina_Debug_Client *cl = calloc(1, sizeof(*cl));
    cl->session = session;
    cl->cid = id;
-   return (Eina_Debug_Client *)cl;
+   return cl;
 }
 
 EAPI Eina_Debug_Session *
 eina_debug_client_session_get(Eina_Debug_Client *cl)
 {
-   _Eina_Debug_Client *_cl = (_Eina_Debug_Client *)cl;
-   return _cl->session;
+   return cl->session;
 }
 
 EAPI int
 eina_debug_client_id_get(Eina_Debug_Client *cl)
 {
-   _Eina_Debug_Client *_cl = (_Eina_Debug_Client *)cl;
-   return _cl->cid;
+   return cl->cid;
 }
 
 EAPI void
@@ -796,7 +809,7 @@ EAPI void
 eina_debug_static_opcode_register(Eina_Debug_Session *session,
       uint32_t op_id, Eina_Debug_Cb cb)
 {
-   if(_eina_debug_global_session) session = _eina_debug_global_session;
+   if(_global_session) session = _global_session;
 
    if(session->cbs_length < op_id + 1)
      {
@@ -819,7 +832,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
       Eina_Debug_Opcode_Status_Cb status_cb)
 {
    if(!session)
-      session = _eina_debug_get_main_session();
+      session = main_session;
    if(!session)
       return;
 
@@ -827,58 +840,16 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
    info->ops = ops;
    info->status_cb = status_cb;
 
-   Eina_Debug_Session *session_opcodes = session;
-   if(_eina_debug_global_session)
-        session_opcodes = _eina_debug_global_session;
+   Eina_Debug_Session *opcodes_session = session;
+   if(_global_session)
+        opcodes_session = _global_session;
 
-   session_opcodes->opcode_reply_infos = eina_list_append(
-         session_opcodes->opcode_reply_infos, info);
+   opcodes_session->opcode_reply_infos = eina_list_append(
+         opcodes_session->opcode_reply_infos, info);
 
    //send only if session's fd connected, if not -  it will be sent when connected
    if(session->fd)
-      _eina_debug_opcodes_register_by_reply_info(session, info);
-}
-
-static void
-_eina_debug_opcodes_register_by_reply_info(Eina_Debug_Session *session,
-      _opcode_reply_info *info)
-{
-    unsigned char *buf;
-
-   int count = 0;
-   int size = sizeof(uint64_t);
-
-   if(!session)
-      session = _eina_debug_get_main_session();
-   if(!session)
-      return;
-
-   while(info->ops[count].opcode_name)
-     {
-        size += strlen(info->ops[count].opcode_name) + 1;
-        count++;
-     }
-
-   buf = alloca(size);
-
-   memcpy(buf, &info, sizeof(uint64_t));
-   int size_curr = sizeof(uint64_t);
-
-   count = 0;
-   while(info->ops[count].opcode_name)
-     {
-        int len = strlen(info->ops[count].opcode_name) + 1;
-        memcpy(buf + size_curr, info->ops[count].opcode_name, len);
-        size_curr += len;
-        count++;
-     }
-
-   Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
-   eina_debug_session_send(cl,
-         EINA_DEBUG_OPCODE_REGISTER,
-         buf,
-         size);
-   eina_debug_client_free(cl);
+      _opcodes_register_by_reply_info(session, info);
 }
 
 Eina_Bool
@@ -887,10 +858,9 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
    Eina_Debug_Packet_Header *hdr =  buffer;
    uint32_t opcode = hdr->opcode;
    Eina_Debug_Cb cb = NULL;
-   Eina_Debug_Session *session_opcodes = _eina_debug_global_session ? _eina_debug_global_session : session;
+   Eina_Debug_Session *opcodes_session = _global_session ? _global_session : session;
 
-   if(opcode < session_opcodes->cbs_length)
-      cb = session_opcodes->cbs[opcode];
+   if(opcode < opcodes_session->cbs_length) cb = opcodes_session->cbs[opcode];
 
    if (cb)
      {
@@ -933,7 +903,7 @@ eina_debug_init(void)
    // for when this debug code is buggy itself
    if (getenv("EFL_NODEBUG")) return EINA_TRUE;
    // start the monitor thread
-   _eina_debug_monitor_thread_start();
+   _thread_start();
    return EINA_TRUE;
 }
 

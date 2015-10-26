@@ -96,7 +96,7 @@ _pids_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
 }
 
 static void
-_args_handle(Eina_Bool flag)
+_args_handle(Eina_Bool flag EINA_UNUSED)
 {
    int i;
    for (i = 1; i < my_argc;)
@@ -151,8 +151,8 @@ main(int argc, char **argv)
    my_argc = argc;
    my_argv = argv;
 
-   _session = eina_debug_local_connect();
-   if (!_session)
+   _session = eina_debug_session_new();
+   if (!eina_debug_local_connect(_session))
      {
         fprintf(stderr, "ERROR: Cannot connect to debug daemon.\n");
         return -1;

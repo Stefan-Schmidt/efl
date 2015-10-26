@@ -68,14 +68,6 @@ _client_pid_find(int pid)
 }
 
 static Eina_Bool
-_cb_evlog(void *data)
-{
-   Client *c = data;
-   send_cli(c->client, "EVLG", NULL, 0);
-   return EINA_TRUE;
-}
-
-static Eina_Bool
 _client_add(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Client_Add *ev)
 {
    Client *c = calloc(1, sizeof(Client));
@@ -271,7 +263,7 @@ _opcode_register_cb(Ecore_Con_Client *dest, void *buffer, int size)
 int
 main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
 {
-   eina_debug_set_reconnect(EINA_FALSE);
+   eina_debug_reconnect_set(EINA_FALSE);
    eina_init();
    ecore_init();
    ecore_con_init();

@@ -66,6 +66,7 @@
 #  define EINA_DEBUG_OPCODE_HELLO      0x00000001
 
 typedef struct _Eina_Debug_Client Eina_Debug_Client;
+typedef struct _Eina_Debug_Session Eina_Debug_Session;
 
 typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
 typedef void (*Eina_Debug_Opcode_Status_Cb)(Eina_Bool);
@@ -90,24 +91,10 @@ typedef struct
    Eina_Debug_Cb cb;
 } Eina_Debug_Opcode;
 
-typedef struct
-{
-   const Eina_Debug_Opcode *ops;
-   Eina_Debug_Opcode_Status_Cb status_cb;
-} _opcode_reply_info;
+EAPI void eina_debug_reconnect_set(Eina_Bool reconnect);
+EAPI Eina_Bool eina_debug_local_connect(Eina_Debug_Session *session);
 
-typedef struct
-{
-   int fd;
-   Eina_Debug_Cb *cbs;
-   unsigned int cbs_length;
-   Eina_Bool use_global_cbs;
-   Eina_List *opcode_reply_infos;
-} Eina_Debug_Session;
-
-EAPI void eina_debug_set_reconnect(Eina_Bool reconnect);
-EAPI Eina_Debug_Session *eina_debug_local_connect(void);
-
+/* TEMP: should be private to debug thread module */
 void _eina_debug_thread_add(void *th);
 void _eina_debug_thread_del(void *th);
 void _eina_debug_thread_mainloop_set(void *th);
