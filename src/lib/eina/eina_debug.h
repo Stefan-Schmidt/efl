@@ -73,6 +73,9 @@ typedef void (*Eina_Debug_Opcode_Status_Cb)(Eina_Bool);
 
 typedef Eina_Bool (*Eina_Debug_Timer_Cb)(void);
 
+typedef void (*Eina_Debug_Connect_Cb)(Eina_Debug_Session *);
+typedef void (*Eina_Debug_Disconnect_Cb)(Eina_Debug_Session *);
+
 typedef struct
 {
    uint32_t size;
@@ -93,6 +96,7 @@ typedef struct
 
 EAPI void eina_debug_reconnect_set(Eina_Bool reconnect);
 EAPI Eina_Bool eina_debug_local_connect(Eina_Debug_Session *session);
+EAPI Eina_Bool eina_debug_server_launch(Eina_Debug_Connect_Cb, Eina_Debug_Disconnect_Cb);
 
 /* TEMP: should be private to debug thread module */
 void _eina_debug_thread_add(void *th);

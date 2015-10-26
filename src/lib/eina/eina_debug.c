@@ -36,8 +36,6 @@ extern Eina_Bool eina_module_init(void);
 extern Eina_Bool eina_mempool_init(void);
 extern Eina_Bool eina_list_init(void);
 
-#define DEBUG_SERVER ".ecore/efl_debug/0"
-
 #define MAX_EVENTS   16
 
 extern Eina_Spinlock      _eina_debug_thread_lock;
@@ -59,7 +57,9 @@ static int                *_bt_cpu;
 static Eina_Bool _local_reconnect_enabled = EINA_TRUE;
 static Eina_Debug_Session *main_session = NULL;
 static Eina_List *sessions = NULL;
-static int _epfd = 0, _eventfd = 0;
+static int _epfd = 0, _listening_fd = 0;
+static Eina_Debug_Connect_Cb _server_conn_cb = NULL;
+static Eina_Debug_Disconnect_Cb _server_disc_cb = NULL;
 
 /* Used by trace timer */
 static double _trace_t0 = 0.0;
@@ -241,40 +241,30 @@ _eina_debug_session_find_by_fd(int fd)
 static void
 _session_fd_attach(Eina_Debug_Session *session, int fd)
 {
-   eina_spinlock_take(&_eina_debug_lock);
-
    session->fd = fd;
 
+   eina_spinlock_take(&_eina_debug_lock);
    //check if already appended to session list
    if(!_eina_debug_session_find_by_fd(fd))
       sessions = eina_list_append(sessions, session);
+   eina_spinlock_release(&_eina_debug_lock);
 
    struct epoll_event event;
-
    event.data.fd = fd;
    event.events = EPOLLIN ;
    int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, fd, &event);
-   if (ret)
-      perror ("epoll_ctl");
-
-   //wakeup the epoll
-   eventfd_write(_eventfd, 1);
-
-   eina_spinlock_release(&_eina_debug_lock);
+   if (ret) perror ("epoll_ctl");
 }
 
 static void
 _session_fd_unattach(Eina_Debug_Session *session)
 {
    eina_spinlock_take(&_eina_debug_lock);
-
    sessions = eina_list_remove(sessions, session);
+   eina_spinlock_release(&_eina_debug_lock);
 
    int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd, NULL);
-   if (ret)
-      perror ("epoll_ctl");
-
-   eina_spinlock_release(&_eina_debug_lock);
+   if (ret) perror ("epoll_ctl");
 }
 
 // a backtracer that uses libunwind to do the job
@@ -574,6 +564,13 @@ _socket_home_get()
    return dir;
 }
 
+#define SERVER_PATH ".ecore"
+#define SERVER_NAME "efl_debug"
+#define SERVER_PORT 0
+
+#define LENGTH_OF_SOCKADDR_UN(s) \
+   (strlen((s)->sun_path) + (size_t)(((struct sockaddr_un *)NULL)->sun_path))
+
 EAPI Eina_Bool
 eina_debug_local_connect(Eina_Debug_Session *session)
 {
@@ -588,7 +585,7 @@ eina_debug_local_connect(Eina_Debug_Session *session)
    //   /var/run/UID/.ecore/efl_debug/0
    // either way a 4k buffer should be ebough ( if it's not we're on an
    // insane system)
-   snprintf(buf, sizeof(buf), "%s/%s", _socket_home_get(), DEBUG_SERVER);
+   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_PORT);
    // create the socket
    fd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (fd < 0) goto err;
@@ -601,20 +598,75 @@ eina_debug_local_connect(Eina_Debug_Session *session)
    // sa that it's a unix socket and where the path is
    socket_unix.sun_family = AF_UNIX;
    strncpy(socket_unix.sun_path, buf, sizeof(socket_unix.sun_path));
-#define LENGTH_OF_SOCKADDR_UN(s) \
-   (strlen((s)->sun_path) + (size_t)(((struct sockaddr_un *)NULL)->sun_path))
    socket_unix_len = LENGTH_OF_SOCKADDR_UN(&socket_unix);
    // actually conenct to efl_debugd service
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
-     goto err;
+      goto err;
    // we succeeded
-   _eina_debug_monitor_service_greet(session);
    _session_fd_attach(session, fd);
+   _eina_debug_monitor_service_greet(session);
    _opcodes_register_all(session);
    return EINA_TRUE;
 err:
    // some kind of connection failure here, so close a valid socket and
    // get out of here
+   if (fd >= 0) close(fd);
+   return EINA_FALSE;
+}
+
+EAPI Eina_Bool
+eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb disc_cb)
+{
+   char buf[4096];
+   int fd, socket_unix_len, curstate = 0;
+   struct sockaddr_un socket_unix;
+   struct epoll_event event = {0};
+   mode_t mask = 0;
+
+   sprintf(buf, "%s/%s", _socket_home_get(), SERVER_PATH);
+   if (mkdir(buf, S_IRWXU) < 0 && errno != EEXIST)
+     {
+        perror("mkdir SERVER_PATH");
+        goto err;
+     }
+   sprintf(buf, "%s/%s/%s", _socket_home_get(), SERVER_PATH, SERVER_NAME);
+   if (mkdir(buf, S_IRWXU) < 0 && errno != EEXIST)
+     {
+        perror("mkdir SERVER_NAME");
+        goto err;
+     }
+   sprintf(buf, "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_PORT);
+   mask = umask(S_IRWXG | S_IRWXO);
+   // create the socket
+   fd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (fd < 0) goto err;
+   // set the socket to close when we exec things so they don't inherit it
+   if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) goto err;
+   // set up some socket options on addr re-use
+   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&curstate,
+                  sizeof(curstate)) < 0)
+     goto err;
+   // sa that it's a unix socket and where the path is
+   socket_unix.sun_family = AF_UNIX;
+   strncpy(socket_unix.sun_path, buf, sizeof(socket_unix.sun_path));
+   socket_unix_len = LENGTH_OF_SOCKADDR_UN(&socket_unix);
+   unlink(socket_unix.sun_path);
+   if (bind(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
+     {
+        perror("ERROR on binding");
+        goto err;
+     }
+   listen(fd, 5);
+   _listening_fd = fd;
+   _server_conn_cb = conn_cb;
+   _server_disc_cb = disc_cb;
+   event.data.fd = _listening_fd;
+   event.events = EPOLLIN;
+   epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_fd, &event);
+   umask(mask);
+   return EINA_TRUE;
+err:
+   if (mask) umask(mask);
    if (fd >= 0) close(fd);
    return EINA_FALSE;
 }
@@ -698,11 +750,13 @@ _monitor(void *_data EINA_UNUSED)
                        int size;
                        unsigned char *buffer;
 
-                       //someone woke us up
-                       if(events[i].data.fd == _eventfd)
+                       //someone wants to connect
+                       if(events[i].data.fd == _listening_fd)
                          {
-                            eventfd_t val;
-                            eventfd_read(_eventfd, &val);
+                            int new_fd = accept(_listening_fd, NULL, NULL);
+                            Eina_Debug_Session *new_fd_session = eina_debug_session_new();
+                            _session_fd_attach(new_fd_session, new_fd);
+                            if (_server_conn_cb) _server_conn_cb(new_fd_session);
                             continue;
                          }
 
@@ -732,6 +786,7 @@ _monitor(void *_data EINA_UNUSED)
                                   _session_fd_unattach(session);
                                   _opcodes_unregister_all(session);
                                   session->fd = -1;
+                                  if (_server_disc_cb) _server_disc_cb(session);
                                   //TODO if its not main session we will tell the main_loop
                                   //that it disconneted
                                }
@@ -760,14 +815,6 @@ _thread_start()
    if (_monitor_thread_runs) return;
    main_session = eina_debug_session_new();
    _epfd = epoll_create (MAX_EVENTS);
-   //create the eventfd to wakeup the epoll before timeout ends
-   _eventfd = eventfd(0, EFD_NONBLOCK);
-   struct epoll_event event = {0};
-   event.data.fd = _eventfd;
-   event.events = EPOLLIN;
-   int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, _eventfd, &event);
-   if (ret)
-      perror ("epoll_ctl");
    // create debug monitor thread
    err = pthread_create(&_monitor_thread, NULL, _monitor, NULL);
    if (err != 0)
