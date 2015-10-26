@@ -20,6 +20,8 @@
 
 #ifdef EINA_HAVE_DEBUG
 
+extern Eina_Spinlock _eina_debug_lock;
+
 static unsigned int _table_num = 0;
 static unsigned int _table_size = 0;
 static const char **_table = NULL;
