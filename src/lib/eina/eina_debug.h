@@ -70,6 +70,7 @@ typedef struct _Eina_Debug_Session Eina_Debug_Session;
 
 typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
 typedef void (*Eina_Debug_Opcode_Status_Cb)(Eina_Bool);
+typedef Eina_Bool (*Eina_Debug_Dispatch_Cb)(Eina_Debug_Session *, void *buffer);
 
 typedef Eina_Bool (*Eina_Debug_Timer_Cb)(void);
 
@@ -115,7 +116,7 @@ void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 
 EAPI Eina_Debug_Session *eina_debug_session_new(void);
 EAPI void eina_debug_session_free(Eina_Debug_Session *session);
-EAPI void eina_debug_session_global_use(void);
+EAPI void eina_debug_session_global_use(Eina_Debug_Dispatch_Cb disp_cb);
 
 EAPI Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
 

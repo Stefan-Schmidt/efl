@@ -76,10 +76,11 @@ typedef struct
 
 struct _Eina_Debug_Session
 {
-   int fd;
    Eina_Debug_Cb *cbs;
-   unsigned int cbs_length;
    Eina_List *opcode_reply_infos;
+   Eina_Debug_Dispatch_Cb dispatch_cb;
+   unsigned int cbs_length;
+   int fd;
 };
 
 struct _Eina_Debug_Client
@@ -169,9 +170,10 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              return -1;
           }
      }
-   fprintf(stderr,
-           "EINA DEBUG ERROR: "
-           "Invalid size read %i != %lu\n", rret, sizeof(uint32_t));
+   if (rret)
+      fprintf(stderr,
+            "EINA DEBUG ERROR: "
+            "Invalid size read %i != %lu\n", rret, sizeof(uint32_t));
 
    return -1;
 }
@@ -185,7 +187,13 @@ eina_debug_reconnect_set(Eina_Bool reconnect)
 EAPI Eina_Debug_Session *
 eina_debug_session_new()
 {
-   return calloc(1, sizeof(Eina_Debug_Session));
+   Eina_Debug_Session *session = calloc(1, sizeof(*session));
+   session->dispatch_cb = eina_debug_dispatch;
+   eina_spinlock_take(&_eina_debug_lock);
+   //check if already appended to session list
+   sessions = eina_list_append(sessions, session);
+   eina_spinlock_release(&_eina_debug_lock);
+   return session;
 }
 
 /*
@@ -193,15 +201,20 @@ eina_debug_session_new()
  * session opcodes.
  */
 EAPI void
-eina_debug_session_global_use(void)
+eina_debug_session_global_use(Eina_Debug_Dispatch_Cb disp_cb)
 {
    if(!_global_session)
       _global_session = eina_debug_session_new();
+   _global_session->dispatch_cb = disp_cb ? disp_cb : eina_debug_dispatch;
 }
 
 EAPI void
 eina_debug_session_free(Eina_Debug_Session *session)
 {
+   eina_spinlock_take(&_eina_debug_lock);
+   sessions = eina_list_remove(sessions, session);
+   eina_spinlock_release(&_eina_debug_lock);
+
    _opcode_reply_info *info = NULL;
 
    EINA_LIST_FREE(session->opcode_reply_infos, info)
@@ -212,21 +225,18 @@ eina_debug_session_free(Eina_Debug_Session *session)
 }
 
 static void
-_eina_debug_sessions_free(void)
+_sessions_free(void)
 {
-   Eina_List *l;
-   Eina_Debug_Session *session;
-
-   EINA_LIST_FOREACH(sessions, l, session)
+   while (sessions)
      {
+        Eina_Debug_Session *session = eina_list_data_get(sessions);
         close(session->fd);
-        eina_debug_session_free(main_session);
+        eina_debug_session_free(session);
      }
-   eina_list_free(sessions);
 }
 
 static Eina_Debug_Session *
-_eina_debug_session_find_by_fd(int fd)
+_session_find_by_fd(int fd)
 {
    Eina_List *l;
    Eina_Debug_Session *session;
@@ -243,12 +253,6 @@ _session_fd_attach(Eina_Debug_Session *session, int fd)
 {
    session->fd = fd;
 
-   eina_spinlock_take(&_eina_debug_lock);
-   //check if already appended to session list
-   if(!_eina_debug_session_find_by_fd(fd))
-      sessions = eina_list_append(sessions, session);
-   eina_spinlock_release(&_eina_debug_lock);
-
    struct epoll_event event;
    event.data.fd = fd;
    event.events = EPOLLIN ;
@@ -259,10 +263,6 @@ _session_fd_attach(Eina_Debug_Session *session, int fd)
 static void
 _session_fd_unattach(Eina_Debug_Session *session)
 {
-   eina_spinlock_take(&_eina_debug_lock);
-   sessions = eina_list_remove(sessions, session);
-   eina_spinlock_release(&_eina_debug_lock);
-
    int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd, NULL);
    if (ret) perror ("epoll_ctl");
 }
@@ -761,18 +761,21 @@ _monitor(void *_data EINA_UNUSED)
                          }
 
                        Eina_Debug_Session *session =
-                          _eina_debug_session_find_by_fd(events[i].data.fd);
+                          _session_find_by_fd(events[i].data.fd);
                        if(session)
                           {
                              size = _eina_debug_session_receive(session, &buffer);
                              // if not negative - we have a real message
                              if (size >= 0)
                                {
-                                  // something we don't understand
-                                  if(!eina_debug_dispatch(main_session, buffer))
-                                     fprintf(stderr,
-                                           "EINA DEBUG ERROR: "
-                                           "Uunknown command \n");
+                                  Eina_Debug_Session *_disp_session = _global_session ? _global_session : session;
+                                  if(!_disp_session->dispatch_cb(session, buffer))
+                                    {
+                                       // something we don't understand
+                                       fprintf(stderr,
+                                             "EINA DEBUG ERROR: "
+                                             "Uunknown command \n");
+                                    }
                                   free(buffer);
                                }
                              // major failure on debug daemon control fd - get out of here.
@@ -801,7 +804,7 @@ _monitor(void *_data EINA_UNUSED)
              }
      }
    // free sessions and close fd's
-   _eina_debug_sessions_free();
+   _sessions_free();
    return NULL;
 }
 
@@ -878,24 +881,20 @@ EAPI void
 eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode ops[],
       Eina_Debug_Opcode_Status_Cb status_cb)
 {
-   if(!session)
-      session = main_session;
-   if(!session)
-      return;
+   Eina_Debug_Session *opcodes_session = session;
+   if(!opcodes_session) opcodes_session = main_session;
+   if(_global_session) opcodes_session = _global_session;
+   if(!opcodes_session) return;
 
    _opcode_reply_info *info = malloc(sizeof(*info));
    info->ops = ops;
    info->status_cb = status_cb;
 
-   Eina_Debug_Session *opcodes_session = session;
-   if(_global_session)
-        opcodes_session = _global_session;
-
    opcodes_session->opcode_reply_infos = eina_list_append(
          opcodes_session->opcode_reply_infos, info);
 
    //send only if session's fd connected, if not -  it will be sent when connected
-   if(session->fd)
+   if(session && session->fd)
       _opcodes_register_by_reply_info(session, info);
 }
 
