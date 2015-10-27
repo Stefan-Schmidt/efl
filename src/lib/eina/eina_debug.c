@@ -31,6 +31,7 @@ Eina_Spinlock _eina_debug_lock;
 
 // only init once
 static Eina_Bool _inited = EINA_FALSE;
+static char *_my_app_name = NULL;
 
 extern Eina_Bool eina_module_init(void);
 extern Eina_Bool eina_mempool_init(void);
@@ -118,13 +119,18 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
 {
    // say hello to our debug daemon - tell them our PID and protocol
    // version we speak
-   unsigned char buf[8];
+   int size = 8 + (_my_app_name ? strlen(_my_app_name) : 0) + 1;
+   unsigned char *buf = alloca(size);
    int version = 1; // version of protocol we speak
    int pid = getpid();
    memcpy(buf + 0, &version, 4);
    memcpy(buf + 4, &pid, 4);
+   if (_my_app_name)
+      memcpy(buf + 8, _my_app_name, strlen(_my_app_name) + 1);
+   else
+      buf[8] = '\0';
    Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
-   eina_debug_session_send(cl, EINA_DEBUG_OPCODE_HELLO, buf, sizeof(buf));
+   eina_debug_session_send(cl, EINA_DEBUG_OPCODE_HELLO, buf, size);
    eina_debug_client_free(cl);
 }
 
@@ -921,6 +927,8 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 Eina_Bool
 eina_debug_init(void)
 {
+   char buf[4096];
+   char *app_name = NULL;
    pthread_t self;
 
    // if already inbitted simply release our lock that we may have locked on
@@ -935,6 +943,12 @@ eina_debug_init(void)
    eina_module_init();
    eina_mempool_init();
    eina_list_init();
+#ifdef __linux__
+   ssize_t nb = readlink("/proc/self/exe", buf, 4096);
+   buf[nb] = '\0';
+   app_name = strrchr(buf, '/');
+   _my_app_name = strdup(app_name ? app_name + 1 : buf);
+#endif
    // set up thread things
    eina_spinlock_new(&_eina_debug_lock);
    eina_spinlock_new(&_eina_debug_thread_lock);

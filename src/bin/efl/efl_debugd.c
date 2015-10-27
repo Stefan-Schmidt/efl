@@ -18,11 +18,18 @@
 
 #include "efl_debug_common.h"
 
+#define STORE(_buf, pval, sz) \
+{ \
+   memcpy(_buf, pval, sz); \
+   _buf += sz; \
+}
+
 typedef struct _Client Client;
 
 struct _Client
 {
    Eina_Debug_Session *session;
+   char *app_name;
    unsigned char    *buf;
    unsigned int      buf_size;
 
@@ -43,7 +50,7 @@ static Eina_Hash *_string_to_opcode_hash = NULL;
 
 static int free_cid = 1;
 
-static uint32_t _pids_list_opcode, _cid_from_pid_opcode;
+static uint32_t _clients_info_opcode, _cid_from_pid_opcode;
 
 typedef struct
 {
@@ -164,14 +171,21 @@ _opcode_register(const char *op_name, uint32_t op_id)
 }
 
 static Eina_Bool
-_hello_cb(Eina_Debug_Client *src, void *buffer, int size EINA_UNUSED)
+_hello_cb(Eina_Debug_Client *src, void *buffer, int size)
 {
    Client *c = _find_client_by_session(eina_debug_client_session_get(src));
-   unsigned char *buf = buffer;
+   char *buf = buffer;
    memcpy(&c->version, buf, 4);
    memcpy(&c->pid, buf + 4, 4);
+   size -= 8;
+   if (size > 1)
+     {
+        c->app_name = malloc(size);
+        strncpy(c->app_name, buf + 8, size);
+        c->app_name[size - 1] = '\0';
+     }
    c->cid = free_cid++;
-   printf("Connection from pid %d\n", c->pid);
+   printf("Connection from pid %d - name %s\n", c->pid, c->app_name);
    return EINA_TRUE;
 }
 
@@ -180,28 +194,40 @@ _cid_get_cb(Eina_Debug_Client *src, void *buffer, int size EINA_UNUSED)
 {
    uint32_t pid = *(uint32_t *)buffer;
    Client *c = _client_pid_find(pid);
-   eina_debug_session_send(src, _cid_from_pid_opcode, &(c->cid), sizeof(uint32_t));
+   if (c)
+      eina_debug_session_send(src, _cid_from_pid_opcode, &(c->cid), sizeof(uint32_t));
    return EINA_TRUE;
 }
 
 static Eina_Bool
-_pids_list_cb(Eina_Debug_Client *src, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_clients_info_cb(Eina_Debug_Client *src, void *buffer EINA_UNUSED, int size)
 {
+   Eina_List *itr;
    Client *c;
    int n = eina_list_count(clients);
-   size = n * sizeof(uint32_t);
-   uint32_t *pids = alloca(size);
-   if (pids)
+   size = (1 + 2 * n) * sizeof(uint32_t); /* nb + nb*(pid+cid) */
+   EINA_LIST_FOREACH(clients, itr, c)
      {
-        int i = 0;
-        Eina_List *l;
-        EINA_LIST_FOREACH(clients, l, c)
-          {
-             pids[i] = c->pid;
-             i++;
-          }
-        eina_debug_session_send(src, _pids_list_opcode, pids, size);
+        size += (c->app_name ? strlen(c->app_name) : 0) + 1;
      }
+   char *buf = alloca(size), *tmp = buf;
+   if (!buf) return EINA_FALSE;
+   STORE(tmp, &n, sizeof(uint32_t));
+   EINA_LIST_FOREACH(clients, itr, c)
+     {
+        STORE(tmp, &c->cid, sizeof(uint32_t));
+        STORE(tmp, &c->pid, sizeof(uint32_t));
+        if (c->app_name)
+          {
+             STORE(tmp, c->app_name, strlen(c->app_name) + 1);
+          }
+        else
+          {
+             char end = '\0';
+             STORE(tmp, &end, 1);
+          }
+     }
+   eina_debug_session_send(src, _clients_info_opcode, buf, size);
    return EINA_TRUE;
 }
 
@@ -243,12 +269,12 @@ main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
    _string_to_opcode_hash = eina_hash_string_superfast_new(NULL);
    _opcode_register("daemon/opcode_register", EINA_DEBUG_OPCODE_REGISTER);
    _opcode_register("daemon/opcode_hello", EINA_DEBUG_OPCODE_HELLO);
-   _pids_list_opcode = _opcode_register("daemon/pids_list", EINA_DEBUG_OPCODE_INVALID);
+   _clients_info_opcode = _opcode_register("daemon/clients_infos", EINA_DEBUG_OPCODE_INVALID);
    _cid_from_pid_opcode = _opcode_register("daemon/cid_from_pid", EINA_DEBUG_OPCODE_INVALID);
 
    eina_debug_static_opcode_register(NULL, EINA_DEBUG_OPCODE_REGISTER, _opcode_register_cb);
    eina_debug_static_opcode_register(NULL, EINA_DEBUG_OPCODE_HELLO, _hello_cb);
-   eina_debug_static_opcode_register(NULL, _pids_list_opcode, _pids_list_cb);
+   eina_debug_static_opcode_register(NULL, _clients_info_opcode, _clients_info_cb);
    eina_debug_static_opcode_register(NULL, _cid_from_pid_opcode, _cid_get_cb);
 
    ecore_main_loop_begin();

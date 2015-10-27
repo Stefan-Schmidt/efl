@@ -18,7 +18,13 @@
 
 #include "efl_debug_common.h"
 
-static uint32_t _pid_opcode = EINA_DEBUG_OPCODE_INVALID;
+#define EXTRACT(_buf, pval, sz) \
+{ \
+   memcpy(pval, _buf, sz); \
+   _buf += sz; \
+}
+
+static uint32_t _clients_info_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
@@ -35,7 +41,7 @@ typedef struct
 static Eina_List *_pending = NULL;
 static Eina_Debug_Session *_session = NULL;
 
-static uint32_t _cid = 0, pid = 0;
+static uint32_t _cid = 0;
 
 static int my_argc = 0;
 static char **my_argv = NULL;
@@ -78,17 +84,21 @@ _cid_get_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUS
 }
 
 static Eina_Bool
-_pids_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+_clients_info_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUSED)
 {
-   int i, n;
+   char *buf = buffer;
+   int n;
+   EXTRACT(buf, &n, sizeof(uint32_t));
 
-   n = (size) / sizeof(uint32_t);
    if (n < 10000)
      {
-        int *pids = buffer;
-        for (i = 0; i < n; i++)
+        while(n--)
           {
-             if (pids[i] > 0) printf("%i\n", pids[i]);
+             int cid, pid;
+             EXTRACT(buf, &cid, sizeof(uint32_t));
+             EXTRACT(buf, &pid, sizeof(uint32_t));
+             printf("CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
+             buf += (strlen(buf) + 1);
           }
      }
    _consume();
@@ -96,21 +106,22 @@ _pids_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
 }
 
 static void
-_args_handle(Eina_Bool flag EINA_UNUSED)
+_args_handle(Eina_Bool flag)
 {
    int i;
+   if (!flag) exit(0);
    for (i = 1; i < my_argc;)
      {
         Eina_Debug_Client *cl = eina_debug_client_new(_session, 0);
         if (!strcmp(my_argv[i], "list"))
           {
-             eina_debug_session_send(cl, _pid_opcode, NULL, 0);
+             eina_debug_session_send(cl, _clients_info_opcode, NULL, 0);
              i++;
           }
         else if (i < my_argc - 1)
           {
              const char *op_str = my_argv[i++];
-             pid = atoi(my_argv[i++]);
+             uint32_t pid = atoi(my_argv[i++]);
              char *buf = NULL;
              eina_debug_session_send(cl, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
              if ((!strcmp(op_str, "pon")) && (i < (my_argc - 2)))
@@ -133,7 +144,7 @@ _args_handle(Eina_Bool flag EINA_UNUSED)
 
 static const Eina_Debug_Opcode ops[] =
 {
-     {"daemon/pids_list",     &_pid_opcode,           &_pids_cb},
+     {"daemon/clients_infos", &_clients_info_opcode,  &_clients_info_cb},
      {"daemon/cid_from_pid",  &_cid_from_pid_opcode,  &_cid_get_cb},
      {"poll/on",              &_poll_on_opcode,       NULL},
      {"poll/off",             &_poll_off_opcode,      NULL},
