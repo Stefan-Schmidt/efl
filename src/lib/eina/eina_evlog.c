@@ -24,8 +24,6 @@
 #include "eina_evlog.h"
 #include "eina_debug.h"
 
-#ifdef EINA_HAVE_DEBUG
-
 #ifdef HAVE_EVIL
 # include <Evil.h>
 #endif
@@ -35,6 +33,7 @@
 #endif
 
 #include <time.h>
+#include <unistd.h>
 
 # ifdef HAVE_MMAP
 #  include <sys/mman.h>
@@ -291,37 +290,3 @@ eina_evlog_shutdown(void)
    eina_spinlock_free(&_evlog_lock);
    return EINA_TRUE;
 }
-#else
-EAPI void
-eina_evlog(const char *event EINA_UNUSED, void *obj EINA_UNUSED, double srctime EINA_UNUSED, const char *detail EINA_UNUSED)
-{
-}
-
-EAPI Eina_Evlog_Buf *
-eina_evlog_steal(void)
-{
-   return NULL;
-}
-
-EAPI void
-eina_evlog_start(void)
-{
-}
-
-EAPI void
-eina_evlog_stop(void)
-{
-}
-
-Eina_Bool
-eina_evlog_init(void)
-{
-   return EINA_TRUE;
-}
-
-Eina_Bool
-eina_evlog_shutdown(void)
-{
-   return EINA_TRUE;
-}
-#endif

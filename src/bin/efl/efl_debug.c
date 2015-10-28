@@ -18,6 +18,10 @@
 
 #include "efl_debug_common.h"
 
+# ifdef HAVE_CONFIG_H
+#  include "config.h"
+# endif
+
 #define EXTRACT(_buf, pval, sz) \
 { \
    memcpy(pval, _buf, sz); \

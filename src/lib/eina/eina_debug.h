@@ -19,51 +19,19 @@
 #ifndef EINA_DEBUG_H_
 # define EINA_DEBUG_H_
 
-# ifdef HAVE_CONFIG_H
-#  include "config.h"
-# endif
+# include <stdint.h>
 
-# include <stdio.h>
-# include <string.h>
-# include <stdlib.h>
-# include <unistd.h>
-# if defined(HAVE_EXECINFO_H) && defined(HAVE_BACKTRACE) && defined(HAVE_DLADDR) && defined(HAVE_UNWIND)
-#  include <execinfo.h>
-#  ifndef _GNU_SOURCE
-#   define _GNU_SOURCE 1
-#  endif
-#  include <errno.h>
-#  include <stdio.h>
-#  include <string.h>
-#  include <unistd.h>
-#  include <sys/epoll.h>
-#  include <sys/eventfd.h>
-#  include <sys/time.h>
-#  include <sys/types.h>
-#  include <sys/stat.h>
-#  include <pthread.h>
-#  include <signal.h>
-#  include <time.h>
-#  include <sys/types.h>
-#  include <sys/stat.h>
-#  include <sys/socket.h>
-#  include <sys/un.h>
-#  include <fcntl.h>
-#  include <libunwind.h>
+# include "eina_config.h"
+# include "eina_lock.h"
+# include "eina_list.h"
 
-#  include "eina_config.h"
-#  include "eina_lock.h"
-#  include "eina_list.h"
+# define EINA_MAX_BT 256
 
-#  define EINA_HAVE_DEBUG 1
+# define EINA_DEBUG_OPCODE_MAX 100
 
-#  define EINA_MAX_BT 256
-
-#  define EINA_DEBUG_OPCODE_MAX 100
-
-#  define EINA_DEBUG_OPCODE_INVALID    0xFFFFFFFF
-#  define EINA_DEBUG_OPCODE_REGISTER   0x00000000
-#  define EINA_DEBUG_OPCODE_HELLO      0x00000001
+# define EINA_DEBUG_OPCODE_INVALID    0xFFFFFFFF
+# define EINA_DEBUG_OPCODE_REGISTER   0x00000000
+# define EINA_DEBUG_OPCODE_HELLO      0x00000001
 
 typedef struct _Eina_Debug_Client Eina_Debug_Client;
 typedef struct _Eina_Debug_Session Eina_Debug_Session;
@@ -139,8 +107,5 @@ EAPI Eina_Bool eina_debug_timer_add(unsigned int timeout_ms, Eina_Debug_Timer_Cb
       int btlen = backtrace((void **)bt, EINA_MAX_BT); \
       _eina_debug_dump_fhandle_bt(file, bt, btlen); \
    } while (0)
-# else
-#  define EINA_BT(file) do { } while (0)
-# endif
 
 #endif

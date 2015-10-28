@@ -12,6 +12,7 @@ installed_einaheadersdir = $(includedir)/eina-@VMAJ@/eina
 dist_installed_einaheaders_DATA = \
 lib/eina/eina_safety_checks.h \
 lib/eina/eina_error.h \
+lib/eina/eina_debug.h \
 lib/eina/eina_log.h \
 lib/eina/eina_inline_log.x \
 lib/eina/eina_fp.h \
@@ -157,7 +158,6 @@ lib/eina/eina_util.c \
 lib/eina/eina_value.c \
 lib/eina/eina_value_util.c \
 lib/eina/eina_xattr.c \
-lib/eina/eina_debug.h \
 lib/eina/eina_private.h \
 lib/eina/eina_share_common.h \
 lib/eina/eina_strbuf_common.h \

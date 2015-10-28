@@ -16,13 +16,37 @@
  * if not, see <http://www.gnu.org/licenses/>.
  */
 
+# ifndef _GNU_SOURCE
+#  define _GNU_SOURCE 1
+# endif
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/epoll.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <pthread.h>
+#include <signal.h>
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <fcntl.h>
+#include <libunwind.h>
+
 #include "eina_debug.h"
 #include "eina_types.h"
 #include "eina_list.h"
 #include "eina_mempool.h"
 #include "eina_util.h"
-
-#ifdef EINA_HAVE_DEBUG
 
 // yes - a global debug spinlock. i expect contention to be low for now, and
 // when needed we can split this up into mroe locks to reduce contention when
@@ -973,17 +997,3 @@ eina_debug_shutdown(void)
    // resources here because they are allocated once only ever.
    return EINA_TRUE;
 }
-
-#else
-Eina_Bool
-eina_debug_init(void)
-{
-   return EINA_TRUE;
-}
-
-Eina_Bool
-eina_debug_shutdown(void)
-{
-   return EINA_TRUE;
-}
-#endif
