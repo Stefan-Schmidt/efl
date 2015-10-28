@@ -927,8 +927,6 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 Eina_Bool
 eina_debug_init(void)
 {
-   char buf[4096];
-   char *app_name = NULL;
    pthread_t self;
 
    // if already inbitted simply release our lock that we may have locked on
@@ -944,11 +942,10 @@ eina_debug_init(void)
    eina_mempool_init();
    eina_list_init();
 #ifdef __linux__
-   ssize_t nb = readlink("/proc/self/exe", buf, 4096);
-   buf[nb] = '\0';
-   app_name = strrchr(buf, '/');
-   _my_app_name = strdup(app_name ? app_name + 1 : buf);
+   extern char *__progname;
+   _my_app_name = __progname;
 #endif
+   // For Windows support GetModuleFileName can be used
    // set up thread things
    eina_spinlock_new(&_eina_debug_lock);
    eina_spinlock_new(&_eina_debug_thread_lock);
