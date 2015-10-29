@@ -254,6 +254,14 @@ eina_debug_session_free(Eina_Debug_Session *session)
    free(session);
 }
 
+EAPI void
+eina_debug_session_dispatch_override(Eina_Debug_Session *session, Eina_Debug_Dispatch_Cb disp_cb)
+{
+   if (!session) return;
+   if (!disp_cb) disp_cb = eina_debug_dispatch;
+   session->dispatch_cb = disp_cb;
+}
+
 static void
 _sessions_free(void)
 {
