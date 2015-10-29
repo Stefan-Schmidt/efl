@@ -28,7 +28,7 @@
    _buf += sz; \
 }
 
-static uint32_t _clients_info_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _cl_stat_reg_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
@@ -88,22 +88,18 @@ _cid_get_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUS
 }
 
 static Eina_Bool
-_clients_info_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUSED)
+_clients_info_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
 {
    char *buf = buffer;
-   int n;
-   EXTRACT(buf, &n, sizeof(uint32_t));
-
-   if (n < 10000)
+   while(size)
      {
-        while(n--)
-          {
-             int cid, pid;
-             EXTRACT(buf, &cid, sizeof(uint32_t));
-             EXTRACT(buf, &pid, sizeof(uint32_t));
-             printf("CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
-             buf += (strlen(buf) + 1);
-          }
+        int cid, pid, len;
+        EXTRACT(buf, &cid, sizeof(uint32_t));
+        EXTRACT(buf, &pid, sizeof(uint32_t));
+        printf("CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
+        len = strlen(buf) + 1;
+        buf += len;
+        size -= (2 * sizeof(uint32_t) + len);
      }
    _consume();
    return EINA_TRUE;
@@ -119,7 +115,7 @@ _args_handle(Eina_Bool flag)
         Eina_Debug_Client *cl = eina_debug_client_new(_session, 0);
         if (!strcmp(my_argv[i], "list"))
           {
-             eina_debug_session_send(cl, _clients_info_opcode, NULL, 0);
+             eina_debug_session_send(cl, _cl_stat_reg_opcode, NULL, 0);
              i++;
           }
         else if (i < my_argc - 1)
@@ -148,7 +144,8 @@ _args_handle(Eina_Bool flag)
 
 static const Eina_Debug_Opcode ops[] =
 {
-     {"daemon/clients_infos", &_clients_info_opcode,  &_clients_info_cb},
+     {"daemon/client_status_register", &_cl_stat_reg_opcode,  NULL},
+     {"daemon/client_added", NULL, &_clients_info_cb},
      {"daemon/cid_from_pid",  &_cid_from_pid_opcode,  &_cid_get_cb},
      {"poll/on",              &_poll_on_opcode,       NULL},
      {"poll/off",             &_poll_off_opcode,      NULL},
