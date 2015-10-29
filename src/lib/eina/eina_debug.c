@@ -135,7 +135,7 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    hdr->opcode = op;
    hdr->cid = eina_debug_client_id_get(dest);
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
-   return write(session->fd, buf, hdr->size + sizeof(uint32_t));
+   return send(session->fd, buf, hdr->size + sizeof(uint32_t), MSG_NOSIGNAL);
 }
 
 static void
@@ -166,7 +166,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    if (!session) return -1;
    // get size of packet
-   rret = read(session->fd, (void *)&size, sizeof(uint32_t));
+   rret = recv(session->fd, (void *)&size, sizeof(uint32_t), 0);
    if (rret == sizeof(uint32_t))
      {
         // allocate a buffer for real payload + header - size variable size
