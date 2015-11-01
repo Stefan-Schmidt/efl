@@ -519,10 +519,10 @@ _callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
 }
 
 static void
-_opcodes_register_by_reply_info(Eina_Debug_Session *session,
+_opcodes_registration_send(Eina_Debug_Session *session,
       _opcode_reply_info *info)
 {
-    unsigned char *buf;
+   unsigned char *buf;
 
    int count = 0;
    int size = sizeof(uint64_t);
@@ -567,7 +567,7 @@ _opcodes_register_all(Eina_Debug_Session *session)
    eina_debug_static_opcode_register(session,
          EINA_DEBUG_OPCODE_REGISTER, _callbacks_register_cb);
    EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
-        _opcodes_register_by_reply_info(session, info);;
+        _opcodes_registration_send(session, info);;
 }
 
 static void
@@ -932,8 +932,8 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
          opcodes_session->opcode_reply_infos, info);
 
    //send only if session's fd connected, if not -  it will be sent when connected
-   if(session && session->fd)
-      _opcodes_register_by_reply_info(session, info);
+   if(opcodes_session && opcodes_session->fd)
+      _opcodes_registration_send(opcodes_session, info);
 }
 
 Eina_Bool
