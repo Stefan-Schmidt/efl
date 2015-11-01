@@ -172,6 +172,15 @@ typedef Eina_Bool (*Eo_Event_Cb)(void *data, Eo *obj, const Eo_Event_Description
  */
 EAPI extern const Eina_Value_Type *EO_DBG_INFO_TYPE;
 
+typedef struct
+{
+   Eo *ptr;
+   char *kl_name;
+} Obj_Info;
+
+EAPI Eina_List *
+eo_debug_list_response_decode(void *buffer, int size);
+
 /**
  * Creates a list inside debug info list.
  * @param[in] list list where to append

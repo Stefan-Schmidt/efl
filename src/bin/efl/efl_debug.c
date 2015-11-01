@@ -16,7 +16,9 @@
  * if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "efl_debug_common.h"
+#include <Eo.h>
+#include <Eina.h>
+#include <Ecore.h>
 
 # ifdef HAVE_CONFIG_H
 #  include "config.h"
@@ -34,6 +36,7 @@ static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _eo_list_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 typedef struct
 {
@@ -105,6 +108,18 @@ _clients_info_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
    return EINA_TRUE;
 }
 
+static Eina_Bool
+_objects_list_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+{
+   Eina_List *objs = eo_debug_list_response_decode(buffer, size), *itr;
+   Obj_Info *info;
+   EINA_LIST_FOREACH(objs, itr, info)
+     {
+        printf("%p: %s\n", info->ptr, info->kl_name);
+     }
+   return EINA_TRUE;
+}
+
 static void
 _args_handle(Eina_Bool flag)
 {
@@ -124,6 +139,7 @@ _args_handle(Eina_Bool flag)
              uint32_t pid = atoi(my_argv[i++]);
              char *buf = NULL;
              eina_debug_session_send(cl, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
+             printf("got %s %d\n", op_str, pid);
              if ((!strcmp(op_str, "pon")) && (i < (my_argc - 2)))
                {
                   uint32_t freq = atoi(my_argv[i++]);
@@ -137,6 +153,8 @@ _args_handle(Eina_Bool flag)
                 _pending_add(&_evlog_on_opcode, NULL, 0);
              else if (!strcmp(op_str, "evlogoff"))
                 _pending_add(&_evlog_off_opcode, NULL, 0);
+             else if (!strcmp(op_str, "eo_list"))
+                _pending_add(&_eo_list_opcode, NULL, 0);
           }
         eina_debug_client_free(cl);
      }
@@ -151,6 +169,7 @@ static const Eina_Debug_Opcode ops[] =
      {"poll/off",             &_poll_off_opcode,      NULL},
      {"evlog/on",             &_evlog_on_opcode,      NULL},
      {"evlog/off",            &_evlog_off_opcode,     NULL},
+     {"Eo/list",              &_eo_list_opcode,       &_objects_list_cb},
      {NULL, NULL, NULL}
 };
 
