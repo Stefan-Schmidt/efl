@@ -128,19 +128,18 @@ _args_handle(Eina_Bool flag)
    for (i = 1; i < my_argc;)
      {
         Eina_Debug_Client *cl = eina_debug_client_new(_session, 0);
-        if (!strcmp(my_argv[i], "list"))
+        const char *op_str = my_argv[i++];
+        if (!strcmp(op_str, "list"))
           {
              eina_debug_session_send(cl, _cl_stat_reg_opcode, NULL, 0);
-             i++;
           }
-        else if (i < my_argc - 1)
+        else if (i <= my_argc - 1)
           {
-             const char *op_str = my_argv[i++];
              uint32_t pid = atoi(my_argv[i++]);
              char *buf = NULL;
              eina_debug_session_send(cl, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
              printf("got %s %d\n", op_str, pid);
-             if ((!strcmp(op_str, "pon")) && (i < (my_argc - 2)))
+             if ((!strcmp(op_str, "pon")) && (i <= (my_argc - 1)))
                {
                   uint32_t freq = atoi(my_argv[i++]);
                   buf = malloc(sizeof(uint32_t));
