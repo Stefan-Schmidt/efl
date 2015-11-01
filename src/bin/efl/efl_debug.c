@@ -115,7 +115,7 @@ _objects_list_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
    Obj_Info *info;
    EINA_LIST_FOREACH(objs, itr, info)
      {
-        printf("%p: %s\n", info->ptr, info->kl_name);
+        printf("%p: %s (%p)\n", info->ptr, info->kl_name, info->parent);
      }
    return EINA_TRUE;
 }

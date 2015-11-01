@@ -72,13 +72,16 @@ _debug_list_req_cb(Eina_Debug_Client *src, void *buffer EINA_UNUSED, int size EI
      }
 
    unsigned int objs_count = eina_list_count(_objs_list);
-   unsigned int resp_size = objs_count * sizeof(uint64_t) + strings_size;
+   unsigned int resp_size = 2 * objs_count * sizeof(uint64_t) + strings_size;
    unsigned char *buf = alloca(resp_size);
    unsigned int size_curr = 0;
 
    EINA_LIST_FOREACH(_objs_list, itr, obj)
      {
         const char *kl_name = eo_class_name_get(obj);
+        memcpy(buf + size_curr, &obj, sizeof(uint64_t));
+        size_curr += sizeof(uint64_t);
+        obj = eo_do_ret(obj, obj, eo_parent_get());
         memcpy(buf + size_curr, &obj, sizeof(uint64_t));
         size_curr += sizeof(uint64_t);
         unsigned int len = strlen(kl_name) + 1;
@@ -102,10 +105,12 @@ eo_debug_list_response_decode(void *buffer, int size)
         Obj_Info *info = calloc(1, sizeof(*info));
         memcpy(&(info->ptr), buf, sizeof(uint64_t));
         buf += sizeof(uint64_t);
+        memcpy(&(info->parent), buf, sizeof(uint64_t));
+        buf += sizeof(uint64_t);
         len = strlen(buf) + 1;
         info->kl_name = strdup(buf);
         buf += len;
-        size -= (len + sizeof(uint64_t));
+        size -= (len + 2 * sizeof(uint64_t));
         list = eina_list_append(list, info);
      }
    return list;

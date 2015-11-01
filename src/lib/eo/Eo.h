@@ -175,6 +175,7 @@ EAPI extern const Eina_Value_Type *EO_DBG_INFO_TYPE;
 typedef struct
 {
    Eo *ptr;
+   Eo *parent;
    char *kl_name;
 } Obj_Info;
 
