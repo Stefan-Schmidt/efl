@@ -153,7 +153,10 @@ _args_handle(Eina_Bool flag)
              else if (!strcmp(op_str, "evlogoff"))
                 _pending_add(&_evlog_off_opcode, NULL, 0);
              else if (!strcmp(op_str, "eo_list"))
-                _pending_add(&_eo_list_opcode, NULL, 0);
+               {
+                  if (i <= my_argc - 1) buf = strdup(my_argv[i++]);
+                  _pending_add(&_eo_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
+               }
           }
         eina_debug_client_free(cl);
      }
