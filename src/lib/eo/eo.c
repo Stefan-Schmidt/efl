@@ -54,7 +54,7 @@ static inline void _eo_data_xunref_internal(_Eo_Object *obj, void *data, const _
       (_eo_classes[_UNMASK_ID(id) - 1]) : NULL); \
       })
 
-static Eina_List *_objs_list = NULL; /* List of Obj_Info */
+static Eina_List *_objs_list = NULL; /* List of Eo used for debug */
 static uint32_t _debug_objs_list_op = EINA_DEBUG_OPCODE_INVALID;
 
 static Eina_Bool
@@ -134,6 +134,12 @@ eo_debug_list_response_decode(void *buffer, int size)
         list = eina_list_append(list, info);
      }
    return list;
+}
+
+EAPI const Eina_List *
+eo_debug_objects_list_get(void)
+{
+   return _objs_list;
 }
 
 static Eina_Bool

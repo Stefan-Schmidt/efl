@@ -37,6 +37,7 @@ static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _eo_list_opcode = EINA_DEBUG_OPCODE_INVALID;
+static uint32_t _elm_list_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 typedef struct
 {
@@ -157,6 +158,11 @@ _args_handle(Eina_Bool flag)
                   if (i <= my_argc - 1) buf = strdup(my_argv[i++]);
                   _pending_add(&_eo_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
                }
+             else if (!strcmp(op_str, "elm_list"))
+               {
+                  if (i <= my_argc - 1) buf = strdup(my_argv[i++]);
+                  _pending_add(&_elm_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
+               }
           }
         eina_debug_client_free(cl);
      }
@@ -164,14 +170,15 @@ _args_handle(Eina_Bool flag)
 
 static const Eina_Debug_Opcode ops[] =
 {
-     {"daemon/client_status_register", &_cl_stat_reg_opcode,  NULL},
-     {"daemon/client_added", NULL, &_clients_info_cb},
-     {"daemon/cid_from_pid",  &_cid_from_pid_opcode,  &_cid_get_cb},
-     {"poll/on",              &_poll_on_opcode,       NULL},
-     {"poll/off",             &_poll_off_opcode,      NULL},
-     {"evlog/on",             &_evlog_on_opcode,      NULL},
-     {"evlog/off",            &_evlog_off_opcode,     NULL},
-     {"Eo/list",              &_eo_list_opcode,       &_objects_list_cb},
+     {"daemon/client_status_register", &_cl_stat_reg_opcode,   NULL},
+     {"daemon/client_added",           NULL,                   &_clients_info_cb},
+     {"daemon/cid_from_pid",           &_cid_from_pid_opcode,  &_cid_get_cb},
+     {"poll/on",                       &_poll_on_opcode,       NULL},
+     {"poll/off",                      &_poll_off_opcode,      NULL},
+     {"evlog/on",                      &_evlog_on_opcode,      NULL},
+     {"evlog/off",                     &_evlog_off_opcode,     NULL},
+     {"Eo/list",                       &_eo_list_opcode,       &_objects_list_cb},
+     {"Elementary/objects_list",       &_elm_list_opcode,      &_objects_list_cb},
      {NULL, NULL, NULL}
 };
 

@@ -182,6 +182,9 @@ typedef struct
 EAPI Eina_List *
 eo_debug_list_response_decode(void *buffer, int size);
 
+EAPI const Eina_List *
+eo_debug_objects_list_get(void);
+
 /**
  * Creates a list inside debug info list.
  * @param[in] list list where to append
