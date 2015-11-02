@@ -814,7 +814,6 @@ _monitor(void *_data EINA_UNUSED)
                                              "EINA DEBUG ERROR: "
                                              "Uunknown command \n");
                                     }
-                                  free(buffer);
                                }
                              // major failure on debug daemon control fd - get out of here.
                              //   else goto fail;
@@ -951,8 +950,10 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
         Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);
         cb(cl, (unsigned char *)buffer + sizeof(*hdr), hdr->size + sizeof(uint32_t) - sizeof(*hdr));
         eina_debug_client_free(cl);
+        free(buffer);
         return EINA_TRUE;
      }
+   free(buffer);
    return EINA_FALSE;
 }
 
