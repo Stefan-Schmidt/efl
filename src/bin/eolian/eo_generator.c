@@ -89,6 +89,8 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
    if (scope == EOLIAN_SCOPE_PROTECTED)
       eina_strbuf_append_printf(str_func, "#ifdef %s_PROTECTED\n", class_env.upper_classname);
 
+   eina_strbuf_append_printf(str_func, "EOAPI @#rettype _EO_%s(void *eo_stack@#macro_comma@#full_params);\n", func_env.lower_eo_func);
+
    Eina_Bool hasnewdocs = eolian_function_documentation_get(func, EOLIAN_UNRESOLVED) ||
                           eolian_function_documentation_get(func, ftype);
    if (hasnewdocs)
@@ -98,7 +100,7 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
         eina_strbuf_append_char(str_func, '\n');
         eina_strbuf_free(dbuf);
      }
-   eina_strbuf_append_printf(str_func, "EOAPI @#rettype %s(@#full_params);\n", func_env.lower_eo_func);
+   eina_strbuf_append_printf(str_func, "#define %s(@#macro_params) _EO_%s(__eo_ctx@#macro_comma@#macro_params)\n", func_env.lower_eo_func, func_env.lower_eo_func);
 
    if (scope == EOLIAN_SCOPE_PROTECTED)
       eina_strbuf_append_printf(str_func, "#endif\n");
@@ -107,6 +109,7 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
    eina_strbuf_append_printf(str_func, "\n");
 
    Eina_Strbuf *str_par = eina_strbuf_new();
+   Eina_Strbuf *str_parn = eina_strbuf_new();
    Eina_Strbuf *str_pardesc = eina_strbuf_new();
 
    itr = eolian_property_keys_get(func, ftype);
@@ -118,7 +121,9 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
         const char *ptype = eolian_type_c_type_get(ptypet);
 
         if (eina_strbuf_length_get(str_par)) eina_strbuf_append(str_par, ", ");
+        if (eina_strbuf_length_get(str_parn)) eina_strbuf_append(str_parn, ", ");
         eina_strbuf_append_printf(str_par, "%s %s", ptype, pname);
+        eina_strbuf_append(str_parn, pname);
         eina_stringshare_del(ptype);
      }
    eina_iterator_free(itr);
@@ -144,8 +149,10 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
              Eina_Bool had_star = !!strchr(ptype, '*');
 
              if (eina_strbuf_length_get(str_par)) eina_strbuf_append(str_par, ", ");
+             if (eina_strbuf_length_get(str_parn)) eina_strbuf_append(str_parn, ", ");
              eina_strbuf_append_printf(str_par, "%s%s%s%s",
                    ptype, had_star?"":" ", add_star?"*":"", pname);
+             eina_strbuf_append(str_parn, pname);
 
              eina_stringshare_del(ptype);
           }
@@ -160,8 +167,8 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
          rettype && strchr(rettype, '*')?"":" ");
    eina_strbuf_replace_all(str_func, "@#rettype", tmpstr);
 
-   eina_strbuf_replace_all(str_func, "@#list_param", eina_strbuf_string_get(str_par));
-   if (!eina_strbuf_length_get(str_par)) eina_strbuf_append(str_par, "void");
+   eina_strbuf_replace_all(str_func, "@#macro_comma", eina_strbuf_length_get(str_parn) ? ", " : "");
+   eina_strbuf_replace_all(str_func, "@#macro_params", eina_strbuf_string_get(str_parn));
    eina_strbuf_replace_all(str_func, "@#full_params", eina_strbuf_string_get(str_par));
    eina_strbuf_replace_all(str_func, "@#list_desc_param", eina_strbuf_string_get(str_pardesc));
 
@@ -169,6 +176,7 @@ eo_fundef_generate(const Eolian_Class *class, const Eolian_Function *func, Eolia
 
    free(tmpstr);
    eina_strbuf_free(str_par);
+   eina_strbuf_free(str_parn);
    eina_strbuf_free(str_pardesc);
 
    eina_strbuf_append(functext, eina_strbuf_string_get(str_func));
