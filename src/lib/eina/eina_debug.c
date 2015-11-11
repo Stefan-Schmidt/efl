@@ -480,9 +480,65 @@ _eina_debug_prof_off_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UN
    return EINA_TRUE;
 }
 
+typedef struct {
+     Eina_Module *handle;
+     int (*init)(void);
+     int (*shutdown)(void);
+} _module_info;
+
+#define _LOAD_SYMBOL(cls_struct, pkg, sym) \
+   do \
+     { \
+        char func_name[1024]; \
+        sprintf(func_name, "%s_debug_" #sym, pkg); \
+        (cls_struct).sym = eina_module_symbol_get((cls_struct).handle, func_name); \
+        if (!(cls_struct).sym) \
+          { \
+             printf("Failed loading symbol '%s' from the library.\n", func_name); \
+             eina_module_free((cls_struct).handle); \
+             (cls_struct).handle = NULL; \
+             return EINA_FALSE; \
+          } \
+     } \
+   while (0)
+
+static Eina_Bool
+_module_init_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+{
+   _module_info minfo;
+   if (size <= 0) return EINA_FALSE;
+   const char *module_name = buffer;
+   char module_path[1024];
+   printf("Init module %s\n", module_name);
+   sprintf(module_path, PACKAGE_LIB_DIR "/lib%s_debug.so", module_name);
+   minfo.handle = eina_module_new(module_path);
+   if (!minfo.handle || !eina_module_load(minfo.handle))
+     {
+        printf("Failed loading debug module %s.\n", module_name);
+        if (minfo.handle) eina_module_free(minfo.handle);
+        minfo.handle = NULL;
+        return EINA_TRUE;
+     }
+
+   _LOAD_SYMBOL(minfo, module_name, init);
+   _LOAD_SYMBOL(minfo, module_name, shutdown);
+
+   minfo.init();
+
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_module_shutdown_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+{
+   return EINA_TRUE;
+}
+
 static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
        {"PLON", NULL, &_eina_debug_prof_on_cb},
        {"PLOF", NULL, &_eina_debug_prof_off_cb},
+       {"Module/Init", NULL, &_module_init_cb},
+       {"Module/Shutdown", NULL, &_module_shutdown_cb},
        {NULL, NULL, NULL}
 };
 
