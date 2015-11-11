@@ -181,6 +181,7 @@ _opcode_register(const char *op_name, uint32_t op_id)
         eina_hash_add(_string_to_opcode_hash, op_name, op_info);
         _opcodes[op_id] = op_info;
      }
+   printf("Register %s -> opcode %d\n", op_name, op_info->opcode);
    return op_info->opcode;
 }
 
