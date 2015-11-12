@@ -86,6 +86,8 @@ static int _epfd = 0, _listening_fd = 0;
 static Eina_Debug_Connect_Cb _server_conn_cb = NULL;
 static Eina_Debug_Disconnect_Cb _server_disc_cb = NULL;
 
+static uint32_t _module_init_opcode = EINA_DEBUG_OPCODE_INVALID;
+
 /* Used by trace timer */
 static double _trace_t0 = 0.0;
 
@@ -504,7 +506,7 @@ typedef struct {
    while (0)
 
 static Eina_Bool
-_module_init_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+_module_init_cb(Eina_Debug_Client *src, void *buffer, int size)
 {
    _module_info minfo;
    if (size <= 0) return EINA_FALSE;
@@ -526,6 +528,7 @@ _module_init_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
 
    minfo.init();
 
+   eina_debug_session_send(src, _module_init_opcode, buffer, size);
    return EINA_TRUE;
 }
 
@@ -538,7 +541,7 @@ _module_shutdown_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED
 static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
        {"PLON", NULL, &_eina_debug_prof_on_cb},
        {"PLOF", NULL, &_eina_debug_prof_off_cb},
-       {"Module/Init", NULL, &_module_init_cb},
+       {"Module/Init", &_module_init_opcode, &_module_init_cb},
        {"Module/Shutdown", NULL, &_module_shutdown_cb},
        {NULL, NULL, NULL}
 };
