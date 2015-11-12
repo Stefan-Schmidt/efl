@@ -303,6 +303,7 @@ _session_fd_unattach(Eina_Debug_Session *session)
 {
    int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd, NULL);
    if (ret) perror ("epoll_ctl");
+   close(session->fd);
 }
 
 // a backtracer that uses libunwind to do the job
@@ -848,9 +849,13 @@ _monitor(void *_data EINA_UNUSED)
                        if(events[i].data.fd == _listening_fd)
                          {
                             int new_fd = accept(_listening_fd, NULL, NULL);
-                            Eina_Debug_Session *new_fd_session = eina_debug_session_new();
-                            _session_fd_attach(new_fd_session, new_fd);
-                            if (_server_conn_cb) _server_conn_cb(new_fd_session);
+                            if (new_fd <= 0) perror("Accept");
+                            else
+                              {
+                                 Eina_Debug_Session *new_fd_session = eina_debug_session_new();
+                                 _session_fd_attach(new_fd_session, new_fd);
+                                 if (_server_conn_cb) _server_conn_cb(new_fd_session);
+                              }
                             continue;
                          }
 
