@@ -1428,6 +1428,12 @@ _edje_part_recalc_single_textblock(FLOAT_T sc,
         if (ep->part->scale)
           evas_object_scale_set(ep->object, TO_DOUBLE(sc));
 
+        eo_do(ep->object,
+              evas_obj_textblock_hyphenation_mode_set(
+                 chosen_desc->text.hyphenation ?
+                 EVAS_HYPHENATION_MODE_AUTO : EVAS_HYPHENATION_MODE_NONE));
+
+
         if ((chosen_desc->text.fit_x) || (chosen_desc->text.fit_y))
           {
              double base_s = 1.0;
@@ -1527,6 +1533,7 @@ _edje_part_recalc_single_textblock(FLOAT_T sc,
                       ((ptxt) && (!text)))
                     evas_object_textblock_text_markup_set(ep->object, text);
                }
+
              if ((chosen_desc->text.min_x) || (chosen_desc->text.min_y))
                {
                   int mw = 0, mh = 0;
@@ -2753,6 +2760,7 @@ _edje_part_recalc_single(Edje *ed,
          params->type.text.align.x = text_desc->text.align.x;
          params->type.text.align.y = text_desc->text.align.y;
          params->type.text.ellipsis = text_desc->text.ellipsis;
+         params->type.text.hyphenation = text_desc->text.hyphenation;
 
          /* text colors */
          if (cc)

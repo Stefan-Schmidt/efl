@@ -380,6 +380,7 @@ static void st_collections_group_parts_part_description_text_align(void);
 static void st_collections_group_parts_part_description_text_source(void);
 static void st_collections_group_parts_part_description_text_text_source(void);
 static void st_collections_group_parts_part_description_text_ellipsis(void);
+static void st_collections_group_parts_part_description_text_hyphenation(void);
 static void st_collections_group_parts_part_description_box_layout(void);
 static void st_collections_group_parts_part_description_box_align(void);
 static void st_collections_group_parts_part_description_box_padding(void);
@@ -842,6 +843,7 @@ New_Statement_Handler statement_handlers[] =
      {"collections.group.parts.part.description.text.elipsis", st_collections_group_parts_part_description_text_ellipsis},
      {"collections.group.parts.part.description.text.ellipsis", st_collections_group_parts_part_description_text_ellipsis},
      {"collections.group.parts.part.description.text.filter", st_collections_group_parts_part_description_filter_code}, /* dup */
+     {"collections.group.parts.part.description.text.hyphenation", st_collections_group_parts_part_description_text_hyphenation},
      {"collections.group.parts.part.description.box.layout", st_collections_group_parts_part_description_box_layout},
      {"collections.group.parts.part.description.box.align", st_collections_group_parts_part_description_box_align},
      {"collections.group.parts.part.description.box.padding", st_collections_group_parts_part_description_box_padding},
@@ -1453,6 +1455,7 @@ _edje_part_description_alloc(unsigned char type, const char *collection, const c
 	   ed->text.align.y = FROM_DOUBLE(0.5);
 	   ed->text.id_source = -1;
 	   ed->text.id_text_source = -1;
+           ed->text.hyphenation = EINA_FALSE;
 
 	   result = &ed->common;
 	   break;
@@ -9403,6 +9406,43 @@ st_collections_group_parts_part_description_text_ellipsis(void)
    ed = (Edje_Part_Description_Text*) current_desc;
 
    ed->text.ellipsis = parse_float_range(0, -1.0, 1.0);
+}
+
+/**
+    @page edcref
+
+    @property
+        hyphenation
+    @parameters
+        [enabled (1 enabled, 0 disabled)]
+    @effect
+        Used to enable automatic hyphenation for TEXTBLOCK parts, based on
+        externally installed hyphenation dictionaries. The dictionaries need
+        to be compatible with Hunspell's hyphenation format.
+        If the style of the TEXTBLOCK has word-wrapping, then word will
+        be hyphenated on line breaks. This is essentially AUTO hyphenation
+        mode that is described in the Evas Textblock documentation. So, consult
+        it for more information.
+        This is disabled by default.
+    @endproperty
+*/
+static void
+st_collections_group_parts_part_description_text_hyphenation(void)
+{
+   Edje_Part_Description_Text *ed;
+
+   check_arg_count(1);
+
+   if (current_part->type != EDJE_PART_TYPE_TEXTBLOCK)
+     {
+        ERR("parse error %s:%i. text attributes in non-TEXTBLOCK part.",
+            file_in, line - 1);
+        exit(-1);
+     }
+
+   ed = (Edje_Part_Description_Text*) current_desc;
+
+   ed->text.hyphenation = parse_bool(0);
 }
 
 /** @edcsubsection{collections_group_parts_description_box,

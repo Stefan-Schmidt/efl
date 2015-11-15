@@ -1369,6 +1369,7 @@ struct _Edje_Part_Description_Spec_Text
    unsigned char  max_y; /* if text size should be part max size */
    int            size_range_min;
    int            size_range_max; /* -1 means, no bound. */
+   Eina_Bool      hyphenation;
 };
 
 struct _Edje_Part_Description_Spec_Box
@@ -1763,6 +1764,7 @@ struct _Edje_Calc_Params
 	 double         ellipsis; // 8
 	 int            size; // 4
 	 Edje_Color     color2, color3; // 8
+         Eina_Bool      hyphenation;
       } text; // 36
    } type; // 40
    const Edje_Calc_Params_Map *map; // 88
