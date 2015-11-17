@@ -243,6 +243,7 @@ eina_debug_session_global_use(Eina_Debug_Dispatch_Cb disp_cb)
 EAPI void
 eina_debug_session_free(Eina_Debug_Session *session)
 {
+   if (!session) return;
    eina_spinlock_take(&_eina_debug_lock);
    sessions = eina_list_remove(sessions, session);
    eina_spinlock_release(&_eina_debug_lock);
