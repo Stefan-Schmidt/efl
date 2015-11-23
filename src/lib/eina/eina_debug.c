@@ -560,7 +560,9 @@ _callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
    Eina_Debug_Session *session = eina_debug_client_session_get(cl);
    _opcode_reply_info *info = NULL;
 
-   memcpy(&info, buffer, sizeof(uint64_t));
+   uint64_t info_64;
+   memcpy(&info_64, buffer, sizeof(uint64_t));
+   info = (_opcode_reply_info *)info_64;
 
    if (!info) return EINA_FALSE;
 
@@ -599,7 +601,8 @@ _opcodes_registration_send(Eina_Debug_Session *session,
 
    buf = alloca(size);
 
-   memcpy(buf, &info, sizeof(uint64_t));
+   uint64_t info_64 = (uint64_t)info;
+   memcpy(buf, &info_64, sizeof(uint64_t));
    int size_curr = sizeof(uint64_t);
 
    count = 0;
