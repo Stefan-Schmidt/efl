@@ -106,6 +106,8 @@ struct _Eina_Debug_Session
    Eina_Debug_Cb *cbs;
    Eina_List *opcode_reply_infos;
    Eina_Debug_Dispatch_Cb dispatch_cb;
+   Eina_Debug_Encode_Cb encode_cb;
+   Eina_Debug_Decode_Cb decode_cb;
    unsigned int cbs_length;
    int fd;
 };
@@ -1023,6 +1025,62 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
      }
    free(buffer);
    return EINA_FALSE;
+}
+
+static void *
+_base_16_encode_cb(const void *data, int src_size, int *dest_size)
+{
+   const char *src = data;
+   *dest_size = src_size * 2;
+   char *dest = malloc(*dest_size);
+   int i;
+   for (i = 0; i < src_size; i++)
+     {
+        dest[(i << 1) + 0] = ((src[i] & 0xF0) >> 4) + 0x40;
+        dest[(i << 1) + 1] = ((src[i] & 0x0F) >> 0) + 0x40;
+     }
+   return dest;
+}
+
+static void *
+_base_16_decode_cb(const void *data, int src_size, int *dest_size)
+{
+   const char *src = data;
+   *dest_size = src_size / 2;
+   char *dest = malloc(*dest_size);
+   int i, j;
+   for (i = 0, j = 0; j < src_size; j += 2)
+     {
+        if ((src[j] & 0xF0) == 0x40 && (src[j + 1] & 0xF0) == 0x40)
+           dest[i++] = ((src[j] - 0x40) << 4) | ((src[j + 1] - 0x40));
+        else goto error;
+     }
+   goto end;
+error:
+   free(dest);
+   dest = NULL;
+   *dest_size = 0;
+end:
+   return dest;
+}
+
+EAPI void eina_debug_session_codec_hooks_add(Eina_Debug_Session *session, Eina_Debug_Encode_Cb enc_cb, Eina_Debug_Decode_Cb dec_cb)
+{
+   if (!session) return;
+   session->encode_cb = enc_cb;
+   session->decode_cb = dec_cb;
+}
+
+EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_Debug_Basic_Codec codec)
+{
+   switch(codec)
+     {
+      case EINA_DEBUG_CODEC_BASE_16:
+         eina_debug_session_codec_hooks_add(session, _base_16_encode_cb, _base_16_decode_cb);
+         break;
+      default:
+         fprintf(stderr, "EINA DEBUG ERROR: Bad basic encoding\n");
+     }
 }
 
 Eina_Bool

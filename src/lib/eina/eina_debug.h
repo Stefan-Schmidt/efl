@@ -45,6 +45,9 @@ typedef Eina_Bool (*Eina_Debug_Timer_Cb)(void);
 typedef void (*Eina_Debug_Connect_Cb)(Eina_Debug_Session *);
 typedef void (*Eina_Debug_Disconnect_Cb)(Eina_Debug_Session *);
 
+typedef void *(*Eina_Debug_Encode_Cb)(const void *buffer, int size, int *ret_size);
+typedef void *(*Eina_Debug_Decode_Cb)(const void *buffer, int size, int *ret_size);
+
 typedef struct
 {
    uint32_t size;
@@ -62,6 +65,11 @@ typedef struct
    uint32_t *opcode_id;
    Eina_Debug_Cb cb;
 } Eina_Debug_Opcode;
+
+typedef enum
+{
+   EINA_DEBUG_CODEC_BASE_16
+} Eina_Debug_Basic_Codec;
 
 EAPI void eina_debug_reconnect_set(Eina_Bool reconnect);
 EAPI Eina_Bool eina_debug_local_connect(Eina_Debug_Session *session);
@@ -86,6 +94,9 @@ EAPI Eina_Debug_Session *eina_debug_session_new(void);
 EAPI void eina_debug_session_free(Eina_Debug_Session *session);
 EAPI void eina_debug_session_global_use(Eina_Debug_Dispatch_Cb disp_cb);
 EAPI void eina_debug_session_dispatch_override(Eina_Debug_Session *session, Eina_Debug_Dispatch_Cb disp_cb);
+
+EAPI void eina_debug_session_codec_hooks_add(Eina_Debug_Session *session, Eina_Debug_Encode_Cb enc_cb, Eina_Debug_Decode_Cb dec_cb);
+EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_Debug_Basic_Codec codec);
 
 EAPI Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
 
