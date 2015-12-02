@@ -82,7 +82,7 @@ static int                *_bt_cpu;
 static Eina_Bool _local_reconnect_enabled = EINA_TRUE;
 static Eina_Debug_Session *main_session = NULL;
 static Eina_List *sessions = NULL;
-static int _epfd = 0, _listening_fd = 0;
+static int _epfd = -1, _listening_fd = -1;
 static Eina_Debug_Connect_Cb _server_conn_cb = NULL;
 static Eina_Debug_Disconnect_Cb _server_disc_cb = NULL;
 
@@ -204,6 +204,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              return -1;
           }
      }
+   if (rret == -1) perror("Read from socket");
    if (rret)
       fprintf(stderr,
             "EINA DEBUG ERROR: "
@@ -883,7 +884,7 @@ _monitor(void *_data EINA_UNUSED)
                                        // something we don't understand
                                        fprintf(stderr,
                                              "EINA DEBUG ERROR: "
-                                             "Uunknown command \n");
+                                             "Unknown command\n");
                                     }
                                }
                              // major failure on debug daemon control fd - get out of here.
