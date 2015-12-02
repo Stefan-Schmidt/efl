@@ -734,6 +734,38 @@ err:
 }
 
 EAPI Eina_Bool
+eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, const char *script EINA_UNUSED)
+{
+   int pipeToShell[2], pipeFromShell[2];
+   int pid = -1;
+   pipe(pipeToShell);
+   pipe(pipeFromShell);
+
+   pid = fork();
+   if (pid == -1) return EINA_FALSE;
+   if (!pid)
+     {
+        const char *args[] = { cmd, (char *)0 };
+        /* Child */
+        close(STDIN_FILENO);
+        dup2(pipeToShell[0], STDIN_FILENO);
+        close(STDOUT_FILENO);
+        dup2(pipeFromShell[1], STDOUT_FILENO);
+        execv(cmd, (char **)args);
+        _exit(-1);
+     }
+   else
+     {
+        /* Parent */
+        eina_debug_session_fd_attach(session, pipeFromShell[0]);
+        session->fd_out = pipeToShell[1];
+        _eina_debug_monitor_service_greet(session);
+        _opcodes_register_all(session);
+     }
+   return EINA_TRUE;
+}
+
+EAPI Eina_Bool
 eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb disc_cb)
 {
    char buf[4096];
