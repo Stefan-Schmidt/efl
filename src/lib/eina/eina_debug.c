@@ -108,6 +108,7 @@ struct _Eina_Debug_Session
    Eina_Debug_Dispatch_Cb dispatch_cb;
    Eina_Debug_Encode_Cb encode_cb;
    Eina_Debug_Decode_Cb decode_cb;
+   double encoding_ratio;
    unsigned int cbs_length;
    int fd_in;
    int fd_out;
@@ -124,6 +125,7 @@ Eina_Debug_Session *_global_session = NULL;
 EAPI int
 eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size)
 {
+   int total_size = 0;
    if (!dest) return -1;
    Eina_Debug_Session *session = eina_debug_client_session_get(dest);
 
@@ -134,14 +136,22 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    // included in that size (so a minimum size of 4) is a 4 byte opcode
    // (all opcodes are 4 bytes as a string of 4 chars), then the real
    // message payload as a data blob after that
-   unsigned char *buf = alloca(sizeof(Eina_Debug_Packet_Header) + size);
+   total_size = size + sizeof(Eina_Debug_Packet_Header);
+   unsigned char *buf = alloca(total_size);
    Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
-   hdr->size = size + sizeof(Eina_Debug_Packet_Header) - sizeof(uint32_t);
+   hdr->size = total_size - sizeof(uint32_t);
    hdr->opcode = op;
    hdr->cid = eina_debug_client_id_get(dest);
-   if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
+   if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, total_size);
    //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(uint32_t));
-   return write(session->fd_out, buf, hdr->size + sizeof(uint32_t));
+   if (session->encode_cb)
+     {
+        int new_size = 0;
+        void *new_buf = session->encode_cb(buf, total_size, &new_size);
+        buf = new_buf;
+        total_size = new_size;
+     }
+   return write(session->fd_out, buf, total_size);
 }
 
 static void
@@ -167,34 +177,52 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
 static int
 _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 {
-   uint32_t size;
+   double ratio = 1.0;
+   int size_sz = sizeof(uint32_t);
+   unsigned char *buf = NULL;
    int rret;
 
    if (!session) return -1;
+   ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
+   size_sz *= ratio;
+   buf = malloc(size_sz);
    // get size of packet
-   rret = read(session->fd_in, (void *)&size, sizeof(uint32_t));
+   rret = read(session->fd_in, buf, size_sz);
    //fprintf(stderr, "%s1:%d - %d\n", __FUNCTION__, session->fd_in, rret);
-   if (rret == sizeof(uint32_t))
+   if (rret == size_sz)
      {
-        // allocate a buffer for real payload + header - size variable size
-        *buffer = malloc(size + sizeof(uint32_t));
-        if (*buffer)
+        int size = 0;
+        if (session->decode_cb)
           {
-             memcpy(*buffer, &size, sizeof(uint32_t));
+             void *size_buf = session->decode_cb(buf, size_sz, NULL);
+             size = *(int *)size_buf;
+             free(size_buf);
+          }
+        else size = *(int *)buf;
+        // allocate a buffer for real payload + header - size variable size
+        buf = realloc(buf, (size + sizeof(uint32_t)) * ratio);
+        if (buf)
+          {
              // get payload - blocking!!!!
-             rret = read(session->fd_in, *buffer + sizeof(uint32_t), size);
+             rret = read(session->fd_in, buf + size_sz, size * ratio);
              //fprintf(stderr, "%s2:%d - %d/%d\n", __FUNCTION__, session->fd_in, size, rret);
-             if (rret != (int)size)
+             if (rret != size * ratio)
                {
                   // we didn't get payload as expected - error on
                   // comms
                   fprintf(stderr,
                         "EINA DEBUG ERROR: "
                         "Invalid payload+header read of %i\n", rret);
-                  free(*buffer);
-                  *buffer = NULL;
+                  free(buf);
                   return -1;
                }
+             if (session->decode_cb)
+               {
+                  *buffer = session->decode_cb(buf, (size + sizeof(uint32_t)) * ratio, NULL);
+                  free(buf);
+               }
+             else
+                *buffer = buf;
              // return payload size (< 0 is an error)
              return size;
           }
@@ -1078,14 +1106,15 @@ static void *
 _base_16_encode_cb(const void *data, int src_size, int *dest_size)
 {
    const char *src = data;
-   *dest_size = src_size * 2;
-   char *dest = malloc(*dest_size);
+   int new_size = src_size * 2;
+   char *dest = malloc(new_size);
    int i;
    for (i = 0; i < src_size; i++)
      {
         dest[(i << 1) + 0] = ((src[i] & 0xF0) >> 4) + 0x40;
         dest[(i << 1) + 1] = ((src[i] & 0x0F) >> 0) + 0x40;
      }
+   if (dest_size) *dest_size = new_size;
    return dest;
 }
 
@@ -1093,8 +1122,8 @@ static void *
 _base_16_decode_cb(const void *data, int src_size, int *dest_size)
 {
    const char *src = data;
-   *dest_size = src_size / 2;
-   char *dest = malloc(*dest_size);
+   int new_size = src_size / 2;
+   char *dest = malloc(new_size);
    int i, j;
    for (i = 0, j = 0; j < src_size; j += 2)
      {
@@ -1106,16 +1135,20 @@ _base_16_decode_cb(const void *data, int src_size, int *dest_size)
 error:
    free(dest);
    dest = NULL;
-   *dest_size = 0;
+   new_size = 0;
 end:
+   if (dest_size) *dest_size = new_size;
    return dest;
 }
 
-EAPI void eina_debug_session_codec_hooks_add(Eina_Debug_Session *session, Eina_Debug_Encode_Cb enc_cb, Eina_Debug_Decode_Cb dec_cb)
+EAPI void
+eina_debug_session_codec_hooks_add(Eina_Debug_Session *session,
+      Eina_Debug_Encode_Cb enc_cb, Eina_Debug_Decode_Cb dec_cb, double encoding_ratio)
 {
    if (!session) return;
    session->encode_cb = enc_cb;
    session->decode_cb = dec_cb;
+   session->encoding_ratio = encoding_ratio;
 }
 
 EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_Debug_Basic_Codec codec)
@@ -1123,7 +1156,7 @@ EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_D
    switch(codec)
      {
       case EINA_DEBUG_CODEC_BASE_16:
-         eina_debug_session_codec_hooks_add(session, _base_16_encode_cb, _base_16_decode_cb);
+         eina_debug_session_codec_hooks_add(session, _base_16_encode_cb, _base_16_decode_cb, 2.0);
          break;
       default:
          fprintf(stderr, "EINA DEBUG ERROR: Bad basic encoding\n");
