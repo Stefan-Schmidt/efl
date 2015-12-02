@@ -109,7 +109,8 @@ struct _Eina_Debug_Session
    Eina_Debug_Encode_Cb encode_cb;
    Eina_Debug_Decode_Cb decode_cb;
    unsigned int cbs_length;
-   int fd;
+   int fd_in;
+   int fd_out;
 };
 
 struct _Eina_Debug_Client
@@ -139,7 +140,8 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    hdr->opcode = op;
    hdr->cid = eina_debug_client_id_get(dest);
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
-   return send(session->fd, buf, hdr->size + sizeof(uint32_t), MSG_NOSIGNAL);
+   //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(uint32_t));
+   return write(session->fd_out, buf, hdr->size + sizeof(uint32_t));
 }
 
 static void
@@ -170,7 +172,8 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    if (!session) return -1;
    // get size of packet
-   rret = recv(session->fd, (void *)&size, sizeof(uint32_t), 0);
+   rret = read(session->fd_in, (void *)&size, sizeof(uint32_t));
+   //fprintf(stderr, "%s1:%d - %d\n", __FUNCTION__, session->fd_in, rret);
    if (rret == sizeof(uint32_t))
      {
         // allocate a buffer for real payload + header - size variable size
@@ -179,7 +182,8 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
           {
              memcpy(*buffer, &size, sizeof(uint32_t));
              // get payload - blocking!!!!
-             rret = read(session->fd, *buffer + sizeof(uint32_t), size);
+             rret = read(session->fd_in, *buffer + sizeof(uint32_t), size);
+             //fprintf(stderr, "%s2:%d - %d/%d\n", __FUNCTION__, session->fd_in, size, rret);
              if (rret != (int)size)
                {
                   // we didn't get payload as expected - error on
@@ -275,7 +279,8 @@ _sessions_free(void)
    while (sessions)
      {
         Eina_Debug_Session *session = eina_list_data_get(sessions);
-        close(session->fd);
+        if (session->fd_in != session->fd_out) close(session->fd_out);
+        close(session->fd_in);
         eina_debug_session_free(session);
      }
 }
@@ -287,16 +292,17 @@ _session_find_by_fd(int fd)
    Eina_Debug_Session *session;
 
    EINA_LIST_FOREACH(sessions, l, session)
-      if(session->fd == fd)
+      if(session->fd_in == fd)
          return session;
 
    return NULL;
 }
 
-void
+EAPI void
 eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
 {
-   session->fd = fd;
+   if (!session) return;
+   session->fd_out = session->fd_in = fd;
 
    struct epoll_event event;
    event.data.fd = fd;
@@ -305,12 +311,19 @@ eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
    if (ret) perror ("epoll_ctl");
 }
 
+EAPI void
+eina_debug_session_fd_out_set(Eina_Debug_Session *session, int fd)
+{
+   if (!session) return;
+   session->fd_out = fd;
+}
+
 static void
 _session_fd_unattach(Eina_Debug_Session *session)
 {
-   int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd, NULL);
+   int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd_in, NULL);
    if (ret) perror ("epoll_ctl");
-   close(session->fd);
+   close(session->fd_in);
 }
 
 // a backtracer that uses libunwind to do the job
@@ -897,7 +910,7 @@ _monitor(void *_data EINA_UNUSED)
 
                                   _session_fd_unattach(session);
                                   _opcodes_unregister_all(session);
-                                  session->fd = -1;
+                                  session->fd_in = session->fd_out = -1;
                                   if (_server_disc_cb) _server_disc_cb(session);
                                   //TODO if its not main session we will tell the main_loop
                                   //that it disconneted
@@ -1003,7 +1016,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
          opcodes_session->opcode_reply_infos, info);
 
    //send only if session's fd connected, if not -  it will be sent when connected
-   if(opcodes_session && opcodes_session->fd)
+   if(opcodes_session && opcodes_session->fd_in)
       _opcodes_registration_send(opcodes_session, info);
 }
 
