@@ -292,8 +292,8 @@ _session_find_by_fd(int fd)
    return NULL;
 }
 
-static void
-_session_fd_attach(Eina_Debug_Session *session, int fd)
+void
+eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
 {
    session->fd = fd;
 
@@ -708,7 +708,7 @@ eina_debug_local_connect(Eina_Debug_Session *session)
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
       goto err;
    // we succeeded
-   _session_fd_attach(session, fd);
+   eina_debug_session_fd_attach(session, fd);
    _eina_debug_monitor_service_greet(session);
    _opcodes_register_all(session);
    return EINA_TRUE;
@@ -863,7 +863,7 @@ _monitor(void *_data EINA_UNUSED)
                             else
                               {
                                  Eina_Debug_Session *new_fd_session = eina_debug_session_new();
-                                 _session_fd_attach(new_fd_session, new_fd);
+                                 eina_debug_session_fd_attach(new_fd_session, new_fd);
                                  if (_server_conn_cb) _server_conn_cb(new_fd_session);
                               }
                             continue;

@@ -92,6 +92,7 @@ void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 
 EAPI Eina_Debug_Session *eina_debug_session_new(void);
 EAPI void eina_debug_session_free(Eina_Debug_Session *session);
+EAPI void eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd);
 EAPI void eina_debug_session_global_use(Eina_Debug_Dispatch_Cb disp_cb);
 EAPI void eina_debug_session_dispatch_override(Eina_Debug_Session *session, Eina_Debug_Dispatch_Cb disp_cb);
 
