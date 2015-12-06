@@ -105,6 +105,7 @@ struct _Eina_Debug_Session
 {
    Eina_Debug_Cb *cbs;
    Eina_List *opcode_reply_infos;
+   Eina_List *script;
    Eina_Debug_Dispatch_Cb dispatch_cb;
    Eina_Debug_Encode_Cb encode_cb;
    Eina_Debug_Decode_Cb decode_cb;
@@ -119,6 +120,8 @@ struct _Eina_Debug_Client
    Eina_Debug_Session *session;
    int cid;
 };
+
+static void _opcodes_register_all(Eina_Debug_Session *session);
 
 Eina_Debug_Session *_global_session = NULL;
 
@@ -174,6 +177,24 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
    eina_debug_client_free(cl);
 }
 
+static void
+_script_consume(Eina_Debug_Session *session)
+{
+   const char *line = eina_list_data_get(session->script);
+   session->script = eina_list_remove_list(session->script, session->script);
+   if (line)
+     {
+        write(session->fd_out, line, strlen(line));
+        write(session->fd_out, "\n", 1);
+     }
+   if (!session->script)
+     {
+        _eina_debug_monitor_service_greet(session);
+        _opcodes_register_all(session);
+     }
+}
+
+
 static int
 _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 {
@@ -183,6 +204,15 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
    int rret;
 
    if (!session) return -1;
+
+   if (session->script)
+     {
+        char c;
+        while (read(session->fd_in, &c, 1)) printf("0x%.2X\n", c);
+        _script_consume(session);
+        return 0;
+     }
+
    ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
    size_sz *= ratio;
    buf = malloc(size_sz);
@@ -762,7 +792,7 @@ err:
 }
 
 EAPI Eina_Bool
-eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, const char *script EINA_UNUSED)
+eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Eina_List *script)
 {
    int pipeToShell[2], pipeFromShell[2];
    int pid = -1;
@@ -787,8 +817,8 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, co
         /* Parent */
         eina_debug_session_fd_attach(session, pipeFromShell[0]);
         session->fd_out = pipeToShell[1];
-        _eina_debug_monitor_service_greet(session);
-        _opcodes_register_all(session);
+        session->script = script;
+        _script_consume(session);
      }
    return EINA_TRUE;
 }
@@ -949,7 +979,7 @@ _monitor(void *_data EINA_UNUSED)
                           {
                              size = _eina_debug_session_receive(session, &buffer);
                              // if not negative - we have a real message
-                             if (size >= 0)
+                             if (size > 0)
                                {
                                   Eina_Debug_Session *_disp_session = _global_session ? _global_session : session;
                                   if(!_disp_session->dispatch_cb(session, buffer))
@@ -958,13 +988,18 @@ _monitor(void *_data EINA_UNUSED)
                                        fprintf(stderr,
                                              "EINA DEBUG ERROR: "
                                              "Unknown command\n");
+                                       while(1);
                                     }
                                }
-                             // major failure on debug daemon control fd - get out of here.
-                             //   else goto fail;
-                             //if its main session we try to reconnect
+                             else if (size == 0)
+                               {
+                                  // May be due to a response from a script line
+                               }
                              else
                                {
+                                  // major failure on debug daemon control fd - get out of here.
+                                  //   else goto fail;
+                                  //if its main session we try to reconnect
                                   if(session == main_session)
                                      main_session_reconnect = EINA_TRUE;
 
@@ -1076,7 +1111,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
          opcodes_session->opcode_reply_infos, info);
 
    //send only if session's fd connected, if not -  it will be sent when connected
-   if(opcodes_session && opcodes_session->fd_in)
+   if(opcodes_session && opcodes_session->fd_in && !opcodes_session->script)
       _opcodes_registration_send(opcodes_session, info);
 }
 
