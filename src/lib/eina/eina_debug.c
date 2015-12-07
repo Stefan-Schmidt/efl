@@ -145,7 +145,7 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    hdr->size = total_size - sizeof(uint32_t);
    hdr->opcode = op;
    hdr->cid = eina_debug_client_id_get(dest);
-   if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, total_size);
+   if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
    //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(uint32_t));
    if (session->encode_cb)
      {
