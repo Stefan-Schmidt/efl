@@ -811,13 +811,28 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
    if (pid == -1) return EINA_FALSE;
    if (!pid)
      {
-        const char *args[] = { cmd, (char *)0 };
+        int i = 0;
+        const char *args[16] = { 0 };
+        char *tmp = strdup(cmd);
         /* Child */
         close(STDIN_FILENO);
         dup2(pipeToShell[0], STDIN_FILENO);
         close(STDOUT_FILENO);
         dup2(pipeFromShell[1], STDOUT_FILENO);
-        execv(cmd, (char **)args);
+        args[i++] = tmp;
+        do
+          {
+             tmp = strchr(tmp, ' ');
+             if (tmp)
+               {
+                  *tmp = '\0';
+                  args[i++] = ++tmp;
+               }
+          }
+        while (tmp);
+        args[i++] = 0;
+        execv(args[0], (char **)args);
+        perror("execv");
         _exit(-1);
      }
    else
