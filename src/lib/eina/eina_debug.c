@@ -233,16 +233,24 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         buf = realloc(buf, (size + sizeof(uint32_t)) * ratio);
         if (buf)
           {
-             // get payload - blocking!!!!
-             rret = read(session->fd_in, buf + size_sz, size * ratio);
-             //fprintf(stderr, "%s2:%d - %d/%d\n", __FUNCTION__, session->fd_in, size, rret);
-             if (rret != size * ratio)
+             int recv_size = 0;
+             while (recv_size < size * ratio)
+               {
+                  rret = read(session->fd_in, buf + size_sz + recv_size, (size * ratio) - recv_size);
+                  if (rret <= 0)
+                    {
+                       free(buf);
+                       return -1;
+                    }
+                  recv_size += rret;
+               }
+             if (recv_size != size * ratio)
                {
                   // we didn't get payload as expected - error on
                   // comms
                   fprintf(stderr,
                         "EINA DEBUG ERROR: "
-                        "Invalid payload+header read of %i\n", rret);
+                        "Invalid payload+header size: read %i expected %i\n", recv_size, (int)(size * ratio));
                   free(buf);
                   return -1;
                }
@@ -270,7 +278,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
    if (rret)
       fprintf(stderr,
             "EINA DEBUG ERROR: "
-            "Invalid size read %i != %lu\n", rret, sizeof(uint32_t));
+            "Invalid size read %i != %i\n", rret, size_sz);
 
    return -1;
 }
