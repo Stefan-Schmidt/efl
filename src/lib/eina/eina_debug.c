@@ -113,6 +113,7 @@ struct _Eina_Debug_Session
    unsigned int cbs_length;
    int fd_in;
    int fd_out;
+   Eina_Bool script_on : 1;
 };
 
 struct _Eina_Debug_Client
@@ -187,7 +188,7 @@ _script_consume(Eina_Debug_Session *session)
         write(session->fd_out, line, strlen(line));
         write(session->fd_out, "\n", 1);
      }
-   if (!session->script)
+   if (!session->script_on && !session->script)
      {
         _eina_debug_monitor_service_greet(session);
         _opcodes_register_all(session);
@@ -205,10 +206,12 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    if (!session) return -1;
 
-   if (session->script)
+   if (session->script_on)
      {
         char c;
-        while (read(session->fd_in, &c, 1)) printf("0x%.2X\n", c);
+        while (read(session->fd_in, &c, 1) == 1) printf("%c", c);
+        printf("\n");
+        session->script_on = !!session->script;
         _script_consume(session);
         return 0;
      }
@@ -839,8 +842,10 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
      {
         /* Parent */
         eina_debug_session_fd_attach(session, pipeFromShell[0]);
+        fcntl(session->fd_in, F_SETFL, O_NONBLOCK);
         session->fd_out = pipeToShell[1];
         session->script = script;
+        session->script_on = EINA_TRUE;
         _script_consume(session);
      }
    return EINA_TRUE;
