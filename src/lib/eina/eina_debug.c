@@ -925,6 +925,15 @@ _signal_init(void)
      fprintf(stderr, "EINA DEBUG ERROR: Can't set up sig %i handler!\n", SIG);
 }
 
+static void
+_session_disconnect(Eina_Debug_Session *session)
+{
+   _session_fd_unattach(session);
+   _opcodes_unregister_all(session);
+   session->fd_in = session->fd_out = -1;
+   if (_server_disc_cb) _server_disc_cb(session);
+}
+
 // this is a DEDICATED debug thread to monitor the application so it works
 // even if the mainloop is blocked or the app otherwise deadlocked in some
 // way. this is an alternative to using external debuggers so we can get
@@ -977,6 +986,11 @@ _monitor(void *_data EINA_UNUSED)
              //check which fd are set/ready for read
              for (i = 0; i < ret; i++)
                {
+                  if (events[i].events & EPOLLHUP)
+                    {
+                       Eina_Debug_Session *session = _session_find_by_fd(events[i].data.fd);
+                       _session_disconnect(session);
+                    }
                   if (events[i].events & EPOLLIN)
                     {
                        int size;
@@ -1011,7 +1025,6 @@ _monitor(void *_data EINA_UNUSED)
                                        fprintf(stderr,
                                              "EINA DEBUG ERROR: "
                                              "Unknown command\n");
-                                       while(1);
                                     }
                                }
                              else if (size == 0)
@@ -1026,10 +1039,7 @@ _monitor(void *_data EINA_UNUSED)
                                   if(session == main_session)
                                      main_session_reconnect = EINA_TRUE;
 
-                                  _session_fd_unattach(session);
-                                  _opcodes_unregister_all(session);
-                                  session->fd_in = session->fd_out = -1;
-                                  if (_server_disc_cb) _server_disc_cb(session);
+                                  _session_disconnect(session);
                                   //TODO if its not main session we will tell the main_loop
                                   //that it disconneted
                                }
