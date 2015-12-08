@@ -95,6 +95,8 @@ static double _trace_t0 = 0.0;
 static unsigned int poll_time = 0;
 static Eina_Debug_Timer_Cb poll_timer_cb = NULL;
 
+static char magic[4] = { 0xDE, 0xAD, 0xBE, 0xEF };
+
 typedef struct
 {
    const Eina_Debug_Opcode *ops;
@@ -113,7 +115,9 @@ struct _Eina_Debug_Session
    unsigned int cbs_length;
    int fd_in;
    int fd_out;
-   Eina_Bool script_on : 1;
+   Eina_Bool magic_on_send : 1;
+   Eina_Bool magic_on_recv : 1;
+   Eina_Bool wait_for_input : 1;
 };
 
 struct _Eina_Debug_Client
@@ -155,6 +159,7 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
         buf = new_buf;
         total_size = new_size;
      }
+   if (session->magic_on_send) write(session->fd_out, magic, 4);
    return write(session->fd_out, buf, total_size);
 }
 
@@ -181,20 +186,28 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
 static void
 _script_consume(Eina_Debug_Session *session)
 {
-   const char *line = eina_list_data_get(session->script);
-   session->script = eina_list_remove_list(session->script, session->script);
-   if (line)
-     {
-        write(session->fd_out, line, strlen(line));
-        write(session->fd_out, "\n", 1);
-     }
-   if (!session->script_on && !session->script)
-     {
-        _eina_debug_monitor_service_greet(session);
-        _opcodes_register_all(session);
-     }
+   const char *line = NULL;
+   do {
+        line = eina_list_data_get(session->script);
+        session->script = eina_list_remove_list(session->script, session->script);
+        if (line)
+          {
+             if (!strncmp(line, "WAIT", 4))
+               {
+                  session->wait_for_input = EINA_TRUE;
+                  return;
+               }
+             else
+               {
+                  write(session->fd_out, line, strlen(line));
+                  write(session->fd_out, "\n", 1);
+               }
+          }
+   }
+   while (line);
+   _eina_debug_monitor_service_greet(session);
+   _opcodes_register_all(session);
 }
-
 
 static int
 _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
@@ -206,21 +219,43 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    if (!session) return -1;
 
-   if (session->script_on)
+   if (session->wait_for_input)
      {
         char c;
         while (read(session->fd_in, &c, 1) == 1) printf("%c", c);
         printf("\n");
-        session->script_on = !!session->script;
+        session->wait_for_input = EINA_FALSE;
         _script_consume(session);
         return 0;
      }
 
+   if (session->magic_on_recv)
+     {
+        char c;
+        int ret, i = 0;
+        do
+          {
+             ret = read(session->fd_in, &c, 1);
+             if (ret != 1)
+               {
+                  printf("\n");
+                  return 0;
+               }
+             if (c == magic[i]) i++;
+             else
+               {
+                  printf("%c", c);
+                  i = 0;
+               }
+          }
+        while (i < 4);
+        printf("Magic found\n");
+     }
    ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
    size_sz *= ratio;
    buf = malloc(size_sz);
    // get size of packet
-   rret = read(session->fd_in, buf, size_sz);
+   while ((rret = read(session->fd_in, buf, size_sz)) == -1 && errno == EAGAIN);
    //fprintf(stderr, "%s1:%d - %d\n", __FUNCTION__, session->fd_in, rret);
    if (rret == size_sz)
      {
@@ -232,6 +267,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              free(size_buf);
           }
         else size = *(int *)buf;
+        //fprintf(stderr, "%s2:%d - %d\n", __FUNCTION__, session->fd_in, size);
         // allocate a buffer for real payload + header - size variable size
         buf = realloc(buf, (size + sizeof(uint32_t)) * ratio);
         if (buf)
@@ -239,7 +275,9 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              int recv_size = 0;
              while (recv_size < size * ratio)
                {
-                  rret = read(session->fd_in, buf + size_sz + recv_size, (size * ratio) - recv_size);
+                  while ((rret = read(session->fd_in, buf + size_sz + recv_size, (size * ratio) - recv_size)) == -1 &&
+                        errno == EAGAIN);
+                  //fprintf(stderr, "%s3:%d - %d\n", __FUNCTION__, session->fd_in, rret);
                   if (rret <= 0)
                     {
                        free(buf);
@@ -661,6 +699,7 @@ _callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
      {
         if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
         eina_debug_static_opcode_register(session, os[i], info->ops[i].cb);
+        printf("Opcode %s -> %d\n", info->ops[i].opcode_name, os[i]);
      }
    if (info->status_cb) info->status_cb(EINA_TRUE);
 
@@ -842,10 +881,10 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
      {
         /* Parent */
         eina_debug_session_fd_attach(session, pipeFromShell[0]);
+        eina_debug_session_magic_set_on_recv(session);
         fcntl(session->fd_in, F_SETFL, O_NONBLOCK);
         session->fd_out = pipeToShell[1];
         session->script = script;
-        session->script_on = EINA_TRUE;
         _script_consume(session);
      }
    return EINA_TRUE;
@@ -1171,6 +1210,7 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
         free(buffer);
         return EINA_TRUE;
      }
+   else fprintf(stderr, "Invalid opcode %d\n", opcode);
    free(buffer);
    return EINA_FALSE;
 }
@@ -1234,6 +1274,20 @@ EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_D
       default:
          fprintf(stderr, "EINA DEBUG ERROR: Bad basic encoding\n");
      }
+}
+
+EAPI void
+eina_debug_session_magic_set_on_send(Eina_Debug_Session *session)
+{
+   if (!session) return;
+   session->magic_on_send = EINA_TRUE;
+}
+
+EAPI void
+eina_debug_session_magic_set_on_recv(Eina_Debug_Session *session)
+{
+   if (!session) return;
+   session->magic_on_recv = EINA_TRUE;
 }
 
 Eina_Bool

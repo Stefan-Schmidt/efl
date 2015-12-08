@@ -102,6 +102,9 @@ EAPI void eina_debug_session_codec_hooks_add(Eina_Debug_Session *session,
       Eina_Debug_Encode_Cb enc_cb, Eina_Debug_Decode_Cb dec_cb, double encoding_ratio);
 EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_Debug_Basic_Codec codec);
 
+EAPI void eina_debug_session_magic_set_on_send(Eina_Debug_Session *session);
+EAPI void eina_debug_session_magic_set_on_recv(Eina_Debug_Session *session);
+
 EAPI Eina_Bool eina_debug_dispatch(Eina_Debug_Session *session, void *buffer);
 
 EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session,

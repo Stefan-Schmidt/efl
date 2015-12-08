@@ -60,7 +60,7 @@ _local_to_shell_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
 int
 main(int argc, char **argv)
 {
-   fprintf(stdout, "Bridge launched\n");
+   fprintf(stdout, "OK\n");
    fflush(stdout);
    sleep(1);
 
@@ -75,6 +75,7 @@ main(int argc, char **argv)
    eina_debug_session_dispatch_override(_shell_session, _shell_to_local_forward);
    eina_debug_session_fd_attach(_shell_session, STDIN_FILENO);
    eina_debug_session_fd_out_set(_shell_session, STDOUT_FILENO);
+   eina_debug_session_magic_set_on_send(_shell_session);
 
    eina_debug_session_dispatch_override(NULL, _local_to_shell_forward);
 
