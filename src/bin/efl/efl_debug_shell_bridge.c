@@ -60,6 +60,10 @@ _local_to_shell_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
 int
 main(int argc, char **argv)
 {
+   fprintf(stdout, "Bridge launched\n");
+   fflush(stdout);
+   sleep(1);
+
    eina_init();
    ecore_init();
 
