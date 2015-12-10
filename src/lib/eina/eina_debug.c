@@ -160,7 +160,10 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
         total_size = new_size;
      }
    if (session->magic_on_send) write(session->fd_out, magic, 4);
-   return write(session->fd_out, buf, total_size);
+   int nb = write(session->fd_out, buf, total_size);
+   char c = 0x0A;
+   if (session->fd_in != session->fd_out) write(session->fd_out, &c, 1);
+   return nb;
 }
 
 static void
@@ -251,11 +254,20 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         while (i < 4);
         printf("Magic found\n");
      }
+   int recv_size = 0;
    ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
    size_sz *= ratio;
    buf = malloc(size_sz);
    // get size of packet
-   while ((rret = read(session->fd_in, buf, size_sz)) == -1 && errno == EAGAIN);
+   do
+     {
+        rret = read(session->fd_in, buf + recv_size, size_sz - recv_size);
+        if (rret == -1 && errno != EAGAIN) goto error;
+        if (rret == 0) goto error;
+        recv_size += rret;
+     }
+   while (recv_size != size_sz);
+
    //fprintf(stderr, "%s1:%d - %d\n", __FUNCTION__, session->fd_in, rret);
    if (rret == size_sz)
      {
@@ -267,12 +279,13 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              free(size_buf);
           }
         else size = *(int *)buf;
-        //fprintf(stderr, "%s2:%d - %d\n", __FUNCTION__, session->fd_in, size);
+        fprintf(stdout, "%s2:%d - %d\n", __FUNCTION__, session->fd_in, size);
+        fflush(stdout);
         // allocate a buffer for real payload + header - size variable size
         buf = realloc(buf, (size + sizeof(uint32_t)) * ratio);
         if (buf)
           {
-             int recv_size = 0;
+             recv_size = 0;
              while (recv_size < size * ratio)
                {
                   while ((rret = read(session->fd_in, buf + size_sz + recv_size, (size * ratio) - recv_size)) == -1 &&
@@ -303,6 +316,11 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              else
                 *buffer = buf;
              // return payload size (< 0 is an error)
+             if (session->fd_in != session->fd_out)
+               {
+                  char c;
+                  while (read(session->fd_in, &c, 1) == -1 && errno == EAGAIN);
+               }
              return size;
           }
         else
@@ -315,6 +333,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              return -1;
           }
      }
+error:
    if (rret == -1) perror("Read from socket");
    if (rret)
       fprintf(stderr,
