@@ -1033,6 +1033,7 @@ _monitor(void *_data EINA_UNUSED)
                   if (events[i].events & EPOLLHUP)
                     {
                        Eina_Debug_Session *session = _session_find_by_fd(events[i].data.fd);
+                       if(session == main_session) main_session_reconnect = EINA_TRUE;
                        _session_disconnect(session);
                     }
                   if (events[i].events & EPOLLIN)
