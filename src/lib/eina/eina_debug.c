@@ -810,7 +810,7 @@ _socket_home_get()
    return dir;
 }
 
-#define SERVER_PATH ".ecore"
+#define SERVER_PATH ".edebug"
 #define SERVER_NAME "efl_debug"
 #define SERVER_PORT 0
 
