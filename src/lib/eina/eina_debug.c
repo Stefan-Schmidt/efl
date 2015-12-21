@@ -48,6 +48,12 @@
 #include "eina_mempool.h"
 #include "eina_util.h"
 
+#ifdef __CYGWIN__
+# define LIBEXT ".dll"
+#else
+# define LIBEXT ".so"
+#endif
+
 // yes - a global debug spinlock. i expect contention to be low for now, and
 // when needed we can split this up into mroe locks to reduce contention when
 // and if that day comes
@@ -657,7 +663,7 @@ _module_init_cb(Eina_Debug_Client *src, void *buffer, int size)
    const char *module_name = buffer;
    char module_path[1024];
    printf("Init module %s\n", module_name);
-   sprintf(module_path, PACKAGE_LIB_DIR "/lib%s_debug.so", module_name);
+   sprintf(module_path, PACKAGE_LIB_DIR "/lib%s_debug"LIBEXT, module_name);
    minfo.handle = eina_module_new(module_path);
    if (!minfo.handle || !eina_module_load(minfo.handle))
      {
