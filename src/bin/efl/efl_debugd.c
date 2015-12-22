@@ -67,7 +67,8 @@ typedef struct
    Eina_Stringshare *opcode_string;
 } Opcode_Information;
 
-Opcode_Information *_opcodes[EINA_DEBUG_OPCODE_MAX];
+#define MAX_OPCODES 1000
+Opcode_Information *_opcodes[MAX_OPCODES];
 
 static Client *
 _client_find_by_cid(int cid)
@@ -169,7 +170,8 @@ _opcode_register(const char *op_name, uint32_t op_id)
           {
              do
                {
-                  op_id = free_opcode++;
+                  free_opcode = (free_opcode + 1) % MAX_OPCODES;
+                  op_id = free_opcode;
                }
              while(_opcodes[op_id]);
           }
