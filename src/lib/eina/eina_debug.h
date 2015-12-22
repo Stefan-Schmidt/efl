@@ -25,12 +25,6 @@
 # include "eina_lock.h"
 # include "eina_list.h"
 
-# define EINA_MAX_BT 256
-
-# define EINA_DEBUG_OPCODE_INVALID    0xFFFFFFFF
-# define EINA_DEBUG_OPCODE_REGISTER   0x00000000
-# define EINA_DEBUG_OPCODE_HELLO      0x00000001
-
 /**
  * @page eina_debug_main Eina Debug
  *
@@ -41,6 +35,17 @@
  * @addtogroup Eina_Debug
  * @{
  */
+
+# define EINA_MAX_BT 256
+
+/**< Invalid opcode value */
+# define EINA_DEBUG_OPCODE_INVALID    0xFFFFFFFF
+
+/**< Opcode used to register other opcodes */
+# define EINA_DEBUG_OPCODE_REGISTER   0x00000000
+
+/**< Opcode used to send greetings to the daemon */
+# define EINA_DEBUG_OPCODE_HELLO      0x00000001
 
 /**
  * @typedef Eina_Debug_Session
