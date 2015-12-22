@@ -85,13 +85,21 @@ static int                *_bt_buf_len;
 static struct timespec    *_bt_ts;
 static int                *_bt_cpu;
 
+/* Flag to enable reconnection to local daemon */
 static Eina_Bool _local_reconnect_enabled = EINA_TRUE;
+/* Local session */
 static Eina_Debug_Session *main_session = NULL;
+/* List of existing sessions */
 static Eina_List *sessions = NULL;
+/* epoll stuff */
 static int _epfd = -1, _listening_fd = -1;
+
+/* Used by the daemon to be notified about connections changes */
 static Eina_Debug_Connect_Cb _server_conn_cb = NULL;
 static Eina_Debug_Disconnect_Cb _server_disc_cb = NULL;
 
+/* Opcode used to load a module
+ * needed by the daemon to notify loading success */
 static uint32_t _module_init_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 /* Used by trace timer */
@@ -101,6 +109,7 @@ static double _trace_t0 = 0.0;
 static unsigned int poll_time = 0;
 static Eina_Debug_Timer_Cb poll_timer_cb = NULL;
 
+/* Magic number used in special cases for reliability */
 static char magic[4] = { 0xDE, 0xAD, 0xBE, 0xEF };
 
 typedef struct
@@ -111,23 +120,25 @@ typedef struct
 
 struct _Eina_Debug_Session
 {
-   Eina_Debug_Cb *cbs;
+   Eina_Debug_Cb *cbs; /* Table of callbacks indexed by opcode id */
    Eina_List *opcode_reply_infos;
-   Eina_List *script;
-   Eina_Debug_Dispatch_Cb dispatch_cb;
-   Eina_Debug_Encode_Cb encode_cb;
-   Eina_Debug_Decode_Cb decode_cb;
-   double encoding_ratio;
-   unsigned int cbs_length;
-   int fd_in;
-   int fd_out;
-   Eina_Bool magic_on_send : 1;
-   Eina_Bool magic_on_recv : 1;
-   Eina_Bool wait_for_input : 1;
+   Eina_List *script; /* Remaining list of script lines to apply */
+   Eina_Debug_Dispatch_Cb dispatch_cb; /* Session dispatcher */
+   Eina_Debug_Encode_Cb encode_cb; /* Packet encoder */
+   Eina_Debug_Decode_Cb decode_cb; /* Packet decoder */
+   double encoding_ratio; /* Encoding ratio */
+   unsigned int cbs_length; /* cbs table size */
+   int fd_in; /* File descriptor to read */
+   int fd_out; /* File descriptor to write */
+   Eina_Bool magic_on_send : 1; /* Indicator to send magic on send */
+   Eina_Bool magic_on_recv : 1; /* Indicator to expect magic on recv */
+   Eina_Bool wait_for_input : 1; /* Indicator to wait for input before continuing sending */
 };
 
 static void _opcodes_register_all(Eina_Debug_Session *session);
 
+/* Global session used by daemon to store in a common place
+ * the information that is common to all the opened sessions*/
 Eina_Debug_Session *_global_session = NULL;
 
 EAPI int
@@ -169,6 +180,7 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
 {
    // say hello to our debug daemon - tell them our PID and protocol
    // version we speak
+   /* Version + Pid + App name */
    int size = 8 + (_my_app_name ? strlen(_my_app_name) : 0) + 1;
    unsigned char *buf = alloca(size);
    int version = 1; // version of protocol we speak
@@ -182,6 +194,11 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
    eina_debug_session_send(session, 0, EINA_DEBUG_OPCODE_HELLO, buf, size);
 }
 
+/*
+ * Used to consume a script line.
+ * WAIT token is used to wait for input after a script line has been
+ * applied.
+ */
 static void
 _script_consume(Eina_Debug_Session *session)
 {
@@ -204,6 +221,7 @@ _script_consume(Eina_Debug_Session *session)
           }
    }
    while (line);
+   /* When all the script has been applied, we can begin to send debug packets */
    _eina_debug_monitor_service_greet(session);
    _opcodes_register_all(session);
 }
@@ -220,6 +238,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    if (session->wait_for_input)
      {
+        /* Wait for input */
         char c;
         while (read(session->fd_in, &c, 1) == 1) printf("%c", c);
         printf("\n");
@@ -230,6 +249,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 
    if (session->magic_on_recv)
      {
+        /* All the bytes before the magic field have to be dropped. */
         char c;
         int ret, i = 0;
         do
@@ -254,7 +274,10 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
    ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
    size_sz *= ratio;
    buf = malloc(size_sz);
-   // get size of packet
+   /*
+    * Retrieve packet size
+    * We need to take into account that the size could arrive in more than one chunk
+    */
    do
      {
         rret = read(session->fd_in, buf + recv_size, size_sz - recv_size);
@@ -270,6 +293,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         int size = 0;
         if (session->decode_cb)
           {
+             /* Decode the size if needed */
              void *size_buf = session->decode_cb(buf, size_sz, NULL);
              size = *(int *)size_buf;
              free(size_buf);
@@ -282,6 +306,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         if (buf)
           {
              recv_size = 0;
+             /* Receive all the remaining packet bytes */
              while (recv_size < size * ratio)
                {
                   while ((rret = read(session->fd_in, buf + size_sz + recv_size, (size * ratio) - recv_size)) == -1 &&
@@ -304,6 +329,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
                   free(buf);
                   return -1;
                }
+             /* Decoding all the packets */
              if (session->decode_cb)
                {
                   *buffer = session->decode_cb(buf, (size + sizeof(uint32_t)) * ratio, NULL);
@@ -311,7 +337,11 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
                }
              else
                 *buffer = buf;
-             // return payload size (< 0 is an error)
+             /*
+              * In case of an interactive shell, 0x0A is needed at the end of the packet to be sent
+              * So we need to retrieve it too.
+              * Magic number can't help here because we don't have it in both directions.
+              */
              if (session->fd_in != session->fd_out)
                {
                   char c;
@@ -430,7 +460,7 @@ eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
    event.data.fd = fd;
    event.events = EPOLLIN ;
    int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, fd, &event);
-   if (ret) perror ("epoll_ctl");
+   if (ret) perror ("epoll_ctl/add");
 }
 
 EAPI void
@@ -444,8 +474,9 @@ static void
 _session_fd_unattach(Eina_Debug_Session *session)
 {
    int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd_in, NULL);
-   if (ret) perror ("epoll_ctl");
+   if (ret) perror ("epoll_ctl/del");
    close(session->fd_in);
+   if (session->fd_in != session->fd_out) close(session->fd_out);
 }
 
 // a backtracer that uses libunwind to do the job
@@ -692,7 +723,10 @@ _opcodes_register(void)
    eina_debug_opcodes_register(NULL, _EINA_DEBUG_MONITOR_OPS, NULL);
 }
 
-/* Expecting pointer of ops followed by list of uint32's */
+/*
+ * Response of the daemon containing the ids of the requested opcodes.
+ * PTR64 + (opcode id)*
+ */
 static Eina_Bool
 _callbacks_register_cb(Eina_Debug_Session *session, uint32_t src_id EINA_UNUSED, void *buffer, int size)
 {
@@ -705,9 +739,7 @@ _callbacks_register_cb(Eina_Debug_Session *session, uint32_t src_id EINA_UNUSED,
    if (!info) return EINA_FALSE;
 
    uint32_t *os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
-   unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t);
-
-   unsigned int i;
+   unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t), i;
 
    for (i = 0; i < count; i++)
      {
