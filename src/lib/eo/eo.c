@@ -55,86 +55,6 @@ static inline void _eo_data_xunref_internal(_Eo_Object *obj, void *data, const _
       })
 
 static Eina_List *_objs_list = NULL; /* List of Eo used for debug */
-static uint32_t _debug_objs_list_op = EINA_DEBUG_OPCODE_INVALID;
-
-static Eina_Bool
-_debug_list_req_cb(Eina_Debug_Session *session, uint32_t src, void *buffer, int size)
-{
-   Eo_Class *kl_id = NULL;
-   if (size > 0)
-     {
-        char *req_classname = buffer;
-        unsigned int i;
-        for (i = 0; i < _eo_classes_last_id && !kl_id; i++)
-          {
-             if (!strcmp(_eo_classes[i]->desc->name, req_classname))
-                kl_id = _eo_class_id_get(_eo_classes[i]);
-          }
-     }
-   Eina_List *itr;
-   Eo *obj;
-   unsigned int strings_size = 0;
-   unsigned int objs_count = 0;
-
-   EINA_LIST_FOREACH(_objs_list, itr, obj)
-     {
-        if (!kl_id || eo_isa(obj, kl_id))
-          {
-             strings_size += strlen(eo_class_name_get(obj)) + 1;
-             objs_count++;
-          }
-     }
-
-   unsigned int resp_size = 2 * objs_count * sizeof(uint64_t) + strings_size;
-   unsigned char *buf = alloca(resp_size);
-   unsigned int size_curr = 0;
-
-   EINA_LIST_FOREACH(_objs_list, itr, obj)
-     {
-        if (!kl_id || eo_isa(obj, kl_id))
-          {
-             const char *kl_name = eo_class_name_get(obj);
-             memcpy(buf + size_curr, &obj, sizeof(uint64_t));
-             size_curr += sizeof(uint64_t);
-             do
-               {
-                  obj = eo_do_ret(obj, obj, eo_parent_get());
-               }
-             while (obj && kl_id && !eo_isa(obj, kl_id));
-             memcpy(buf + size_curr, &obj, sizeof(uint64_t));
-             size_curr += sizeof(uint64_t);
-             unsigned int len = strlen(kl_name) + 1;
-             memcpy(buf + size_curr, kl_name, len);
-             size_curr += len;
-          }
-     }
-
-   eina_debug_session_send(session, src, _debug_objs_list_op, buf, resp_size);
-
-   return EINA_TRUE;
-}
-
-EAPI Eina_List *
-eo_debug_list_response_decode(void *buffer, int size)
-{
-   Eina_List *list = NULL;
-   char *buf = buffer;
-   while(size > 0)
-     {
-        int len;
-        Obj_Info *info = calloc(1, sizeof(*info));
-        memcpy(&(info->ptr), buf, sizeof(uint64_t));
-        buf += sizeof(uint64_t);
-        memcpy(&(info->parent), buf, sizeof(uint64_t));
-        buf += sizeof(uint64_t);
-        len = strlen(buf) + 1;
-        info->kl_name = strdup(buf);
-        buf += len;
-        size -= (len + 2 * sizeof(uint64_t));
-        list = eina_list_append(list, info);
-     }
-   return list;
-}
 
 EAPI const Eina_List *
 eo_debug_objects_list_get(void)
@@ -154,18 +74,6 @@ _debug_object_add(Eo *obj)
 {
    _objs_list = eina_list_append(_objs_list, obj);
    eo_do(obj, eo_event_callback_add(EO_EV_DEL, _debug_obj_del, NULL));
-}
-
-static const Eina_Debug_Opcode _debug_ops[] = {
-       {"Eo/list", &_debug_objs_list_op, &_debug_list_req_cb},
-       {NULL, NULL, NULL}
-};
-
-static Eina_Bool
-_debug_init()
-{
-   eina_debug_opcodes_register(NULL, _debug_ops, NULL);
-   return EINA_TRUE;
 }
 
 static inline void
@@ -1884,7 +1792,6 @@ eo_init(void)
      return EINA_TRUE;
 
    eina_init();
-   _debug_init();
 
    _eo_sz = EO_ALIGN_SIZE(sizeof(_Eo_Object));
    _eo_class_sz = EO_ALIGN_SIZE(sizeof(_Eo_Class));

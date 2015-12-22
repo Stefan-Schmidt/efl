@@ -16,7 +16,6 @@
  * if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <Eo.h>
 #include <Eina.h>
 #include <Ecore.h>
 
@@ -36,7 +35,6 @@ static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _eo_list_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 typedef struct
 {
@@ -106,18 +104,6 @@ _clients_info_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t src EINA_UNUS
    return EINA_TRUE;
 }
 
-static Eina_Bool
-_objects_list_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer, int size)
-{
-   Eina_List *objs = eo_debug_list_response_decode(buffer, size), *itr;
-   Obj_Info *info;
-   EINA_LIST_FOREACH(objs, itr, info)
-     {
-        printf("%p: %s (%p)\n", info->ptr, info->kl_name, info->parent);
-     }
-   return EINA_TRUE;
-}
-
 static void
 _args_handle(Eina_Bool flag)
 {
@@ -149,11 +135,6 @@ _args_handle(Eina_Bool flag)
                 _pending_add(&_evlog_on_opcode, NULL, 0);
              else if (!strcmp(op_str, "evlogoff"))
                 _pending_add(&_evlog_off_opcode, NULL, 0);
-             else if (!strcmp(op_str, "eo_list"))
-               {
-                  if (i <= my_argc - 1) buf = strdup(my_argv[i++]);
-                  _pending_add(&_eo_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
-               }
           }
      }
 }
@@ -167,7 +148,6 @@ static const Eina_Debug_Opcode ops[] =
      {"poll/off",                      &_poll_off_opcode,      NULL},
      {"evlog/on",                      &_evlog_on_opcode,      NULL},
      {"evlog/off",                     &_evlog_off_opcode,     NULL},
-     {"Eo/list",                       &_eo_list_opcode,       &_objects_list_cb},
      {NULL, NULL, NULL}
 };
 
