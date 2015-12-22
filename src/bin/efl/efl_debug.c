@@ -37,7 +37,6 @@ static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static uint32_t _eo_list_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _elm_list_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 typedef struct
 {
@@ -155,11 +154,6 @@ _args_handle(Eina_Bool flag)
                   if (i <= my_argc - 1) buf = strdup(my_argv[i++]);
                   _pending_add(&_eo_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
                }
-             else if (!strcmp(op_str, "elm_list"))
-               {
-                  if (i <= my_argc - 1) buf = strdup(my_argv[i++]);
-                  _pending_add(&_elm_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
-               }
           }
      }
 }
@@ -174,7 +168,6 @@ static const Eina_Debug_Opcode ops[] =
      {"evlog/on",                      &_evlog_on_opcode,      NULL},
      {"evlog/off",                     &_evlog_off_opcode,     NULL},
      {"Eo/list",                       &_eo_list_opcode,       &_objects_list_cb},
-     {"Elementary/objects_list",       &_elm_list_opcode,      &_objects_list_cb},
      {NULL, NULL, NULL}
 };
 
