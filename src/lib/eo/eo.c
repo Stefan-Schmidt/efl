@@ -58,7 +58,7 @@ static Eina_List *_objs_list = NULL; /* List of Eo used for debug */
 static uint32_t _debug_objs_list_op = EINA_DEBUG_OPCODE_INVALID;
 
 static Eina_Bool
-_debug_list_req_cb(Eina_Debug_Client *src, void *buffer, int size)
+_debug_list_req_cb(Eina_Debug_Session *session, uint32_t src, void *buffer, int size)
 {
    Eo_Class *kl_id = NULL;
    if (size > 0)
@@ -109,7 +109,7 @@ _debug_list_req_cb(Eina_Debug_Client *src, void *buffer, int size)
           }
      }
 
-   eina_debug_session_send(src, _debug_objs_list_op, buf, resp_size);
+   eina_debug_session_send(session, src, _debug_objs_list_op, buf, resp_size);
 
    return EINA_TRUE;
 }

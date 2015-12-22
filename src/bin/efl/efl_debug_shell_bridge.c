@@ -23,7 +23,6 @@
 #include <unistd.h>
 
 static Eina_Debug_Session *_shell_session = NULL;
-static Eina_Debug_Client *_local_client = NULL, *_shell_client = NULL;
 
 static Eina_Bool
 _shell_to_local_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
@@ -31,15 +30,7 @@ _shell_to_local_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
    char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
    Eina_Debug_Packet_Header *hdr = buffer;
    int size = hdr->size + sizeof(uint32_t) - sizeof(Eina_Debug_Packet_Header);
-   FILE *fp = fopen("shell2local", "w");
-   fwrite(buffer, 1, hdr->size + sizeof(uint32_t), fp);
-   fclose(fp);
-   if (!_local_client || eina_debug_client_id_get(_local_client) != (int)hdr->cid)
-     {
-        eina_debug_client_free(_local_client);
-        _local_client = eina_debug_client_new(NULL, hdr->cid);
-     }
-   eina_debug_session_send(_local_client, hdr->opcode, data_buf, size);
+   eina_debug_session_send(NULL, hdr->cid, hdr->opcode, data_buf, size);
    return EINA_TRUE;
 }
 
@@ -49,11 +40,7 @@ _local_to_shell_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
    char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
    Eina_Debug_Packet_Header *hdr = buffer;
    int size = hdr->size + sizeof(uint32_t) - sizeof(Eina_Debug_Packet_Header);
-   FILE *fp = fopen("local2shell", "w");
-   fwrite(buffer, 1, hdr->size + sizeof(uint32_t), fp);
-   fclose(fp);
-   if (!_shell_client) _shell_client = eina_debug_client_new(_shell_session, hdr->cid);
-   eina_debug_session_send(_shell_client, hdr->opcode, data_buf, size);
+   eina_debug_session_send(_shell_session, hdr->cid, hdr->opcode, data_buf, size);
    return EINA_TRUE;
 }
 

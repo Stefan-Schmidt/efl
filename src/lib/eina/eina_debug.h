@@ -45,12 +45,6 @@
  */
 
 /**
- * @typedef Eina_Debug_Client
- * A structure to describe a client.
- */
-typedef struct _Eina_Debug_Client Eina_Debug_Client;
-
-/**
  * @typedef Eina_Debug_Session
  * A session used to interact with the debug daemon
  */
@@ -61,11 +55,12 @@ typedef struct _Eina_Debug_Session Eina_Debug_Session;
  *
  * A callback invoked when a specific packet is received.
  *
- * @param src the source that sent the packet
+ * @param session the session
+ * @param cid the source id
  * @param buffer the packet payload data
  * @param size the packet payload size
  */
-typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Client *src, void *buffer, int size);
+typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size);
 
 /**
  * @typedef Eina_Debug_Opcode_Status_Cb
@@ -371,51 +366,15 @@ EAPI void eina_debug_static_opcode_register(Eina_Debug_Session *session,
  * dest is a client described by a session and a client id. It can be created
  * with eina_debug_client_new.
  *
- * @param dest the destination to send the packet to
+ * @param session the session to use to send the packet
+ * @param dest_id the destination id to send the packet to
  * @param op the opcode for this packet
  * @param data payload to send
  * @param size payload size
  *
  * @return the number of sent bytes
  */
-EAPI int eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size);
-
-/**
- * @brief Create a new client
- *
- *
- *
- * @param session the session to access this client
- * @param id the id of the client
- *
- * @return the client
- */
-EAPI Eina_Debug_Client *eina_debug_client_new(Eina_Debug_Session *session, int id);
-
-/**
- * @brief Get session from client
- *
- * @param cl the client
- *
- * @return the client session
- */
-EAPI Eina_Debug_Session *eina_debug_client_session_get(Eina_Debug_Client *cl);
-
-/**
- * @brief Get id from client
- *
- * @param cl the client
- *
- * @return the client id
- */
-EAPI int eina_debug_client_id_get(Eina_Debug_Client *cl);
-
-/**
- * @brief Free the client
- *
- * @param cl the client
- */
-EAPI void eina_debug_client_free(Eina_Debug_Client *cl);
+EAPI int eina_debug_session_send(Eina_Debug_Session *session, uint32_t dest_id, uint32_t op, void *data, int size);
 
 /**
  * @brief Add a timer

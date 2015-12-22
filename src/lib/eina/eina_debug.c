@@ -126,22 +126,14 @@ struct _Eina_Debug_Session
    Eina_Bool wait_for_input : 1;
 };
 
-struct _Eina_Debug_Client
-{
-   Eina_Debug_Session *session;
-   int cid;
-};
-
 static void _opcodes_register_all(Eina_Debug_Session *session);
 
 Eina_Debug_Session *_global_session = NULL;
 
 EAPI int
-eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int size)
+eina_debug_session_send(Eina_Debug_Session *session, uint32_t dest, uint32_t op, void *data, int size)
 {
    int total_size = 0;
-   if (!dest) return -1;
-   Eina_Debug_Session *session = eina_debug_client_session_get(dest);
 
    if(!session) session = main_session;
 
@@ -155,7 +147,7 @@ eina_debug_session_send(Eina_Debug_Client *dest, uint32_t op, void *data, int si
    Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
    hdr->size = total_size - sizeof(uint32_t);
    hdr->opcode = op;
-   hdr->cid = eina_debug_client_id_get(dest);
+   hdr->cid = dest;
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
    //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(uint32_t));
    if (session->encode_cb)
@@ -187,9 +179,7 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
       memcpy(buf + 8, _my_app_name, strlen(_my_app_name) + 1);
    else
       buf[8] = '\0';
-   Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
-   eina_debug_session_send(cl, EINA_DEBUG_OPCODE_HELLO, buf, size);
-   eina_debug_client_free(cl);
+   eina_debug_session_send(session, 0, EINA_DEBUG_OPCODE_HELLO, buf, size);
 }
 
 static void
@@ -614,7 +604,7 @@ err:
 
 // profiling on with poll time gap as uint payload
 static Eina_Bool
-_eina_debug_prof_on_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+_eina_debug_prof_on_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer, int size)
 {
    unsigned int time;
    if (size >= 4)
@@ -627,7 +617,7 @@ _eina_debug_prof_on_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int siz
 }
 
 static Eina_Bool
-_eina_debug_prof_off_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_eina_debug_prof_off_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_debug_timer_add(0, NULL);
    return EINA_TRUE;
@@ -656,7 +646,7 @@ typedef struct {
    while (0)
 
 static Eina_Bool
-_module_init_cb(Eina_Debug_Client *src, void *buffer, int size)
+_module_init_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size)
 {
    _module_info minfo;
    if (size <= 0) return EINA_FALSE;
@@ -678,12 +668,12 @@ _module_init_cb(Eina_Debug_Client *src, void *buffer, int size)
 
    minfo.init();
 
-   eina_debug_session_send(src, _module_init_opcode, buffer, size);
+   eina_debug_session_send(session, cid, _module_init_opcode, buffer, size);
    return EINA_TRUE;
 }
 
 static Eina_Bool
-_module_shutdown_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_module_shutdown_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    return EINA_TRUE;
 }
@@ -704,9 +694,8 @@ _opcodes_register(void)
 
 /* Expecting pointer of ops followed by list of uint32's */
 static Eina_Bool
-_callbacks_register_cb(Eina_Debug_Client *cl, void *buffer, int size)
+_callbacks_register_cb(Eina_Debug_Session *session, uint32_t src_id EINA_UNUSED, void *buffer, int size)
 {
-   Eina_Debug_Session *session = eina_debug_client_session_get(cl);
    _opcode_reply_info *info = NULL;
 
    uint64_t info_64;
@@ -764,12 +753,10 @@ _opcodes_registration_send(Eina_Debug_Session *session,
         count++;
      }
 
-   Eina_Debug_Client *cl = eina_debug_client_new(session, 0);
-   eina_debug_session_send(cl,
+   eina_debug_session_send(session, 0,
          EINA_DEBUG_OPCODE_REGISTER,
          buf,
          size);
-   eina_debug_client_free(cl);
 }
 
 static void
@@ -1148,33 +1135,6 @@ _thread_start()
    else _monitor_thread_runs = EINA_TRUE;
 }
 
-EAPI Eina_Debug_Client *
-eina_debug_client_new(Eina_Debug_Session *session, int id)
-{
-   Eina_Debug_Client *cl = calloc(1, sizeof(*cl));
-   cl->session = session;
-   cl->cid = id;
-   return cl;
-}
-
-EAPI Eina_Debug_Session *
-eina_debug_client_session_get(Eina_Debug_Client *cl)
-{
-   return cl->session;
-}
-
-EAPI int
-eina_debug_client_id_get(Eina_Debug_Client *cl)
-{
-   return cl->cid;
-}
-
-EAPI void
-eina_debug_client_free(Eina_Debug_Client *cl)
-{
-   free(cl);
-}
-
 EAPI void
 eina_debug_static_opcode_register(Eina_Debug_Session *session,
       uint32_t op_id, Eina_Debug_Cb cb)
@@ -1230,9 +1190,9 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 
    if (cb)
      {
-        Eina_Debug_Client *cl = eina_debug_client_new(session, hdr->cid);
-        cb(cl, (unsigned char *)buffer + sizeof(*hdr), hdr->size + sizeof(uint32_t) - sizeof(*hdr));
-        eina_debug_client_free(cl);
+        cb(session, hdr->cid,
+              (unsigned char *)buffer + sizeof(*hdr),
+              hdr->size + sizeof(uint32_t) - sizeof(*hdr));
         free(buffer);
         return EINA_TRUE;
      }

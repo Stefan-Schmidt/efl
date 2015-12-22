@@ -65,9 +65,7 @@ _consume()
    _pending_request *req = eina_list_data_get(_pending);
    _pending = eina_list_remove(_pending, req);
 
-   Eina_Debug_Client *cl = eina_debug_client_new(_session, _cid);
-   eina_debug_session_send(cl, *(req->opcode), req->buffer, req->size);
-   eina_debug_client_free(cl);
+   eina_debug_session_send(_session, _cid, *(req->opcode), req->buffer, req->size);
 
    free(req->buffer);
    free(req);
@@ -84,7 +82,7 @@ _pending_add(uint32_t *opcode, void *buffer, int size)
 }
 
 static Eina_Bool
-_cid_get_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUSED)
+_cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer, int size EINA_UNUSED)
 {
    _cid = *(uint32_t *)buffer;
    _consume();
@@ -92,7 +90,7 @@ _cid_get_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size EINA_UNUS
 }
 
 static Eina_Bool
-_clients_info_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+_clients_info_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t src EINA_UNUSED, void *buffer, int size)
 {
    char *buf = buffer;
    while(size)
@@ -110,7 +108,7 @@ _clients_info_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
 }
 
 static Eina_Bool
-_objects_list_cb(Eina_Debug_Client *src EINA_UNUSED, void *buffer, int size)
+_objects_list_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer, int size)
 {
    Eina_List *objs = eo_debug_list_response_decode(buffer, size), *itr;
    Obj_Info *info;
@@ -128,17 +126,16 @@ _args_handle(Eina_Bool flag)
    if (!flag) exit(0);
    for (i = 1; i < my_argc;)
      {
-        Eina_Debug_Client *cl = eina_debug_client_new(_session, 0);
         const char *op_str = my_argv[i++];
         if (!strcmp(op_str, "list"))
           {
-             eina_debug_session_send(cl, _cl_stat_reg_opcode, NULL, 0);
+             eina_debug_session_send(_session, 0, _cl_stat_reg_opcode, NULL, 0);
           }
         else if (i <= my_argc - 1)
           {
              uint32_t pid = atoi(my_argv[i++]);
              char *buf = NULL;
-             eina_debug_session_send(cl, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
+             eina_debug_session_send(_session, 0, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
              printf("got %s %d\n", op_str, pid);
              if ((!strcmp(op_str, "pon")) && (i <= (my_argc - 1)))
                {
@@ -164,7 +161,6 @@ _args_handle(Eina_Bool flag)
                   _pending_add(&_elm_list_opcode, buf, buf ? strlen(buf) + 1 : 0);
                }
           }
-        eina_debug_client_free(cl);
      }
 }
 

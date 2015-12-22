@@ -34,7 +34,7 @@ typedef struct _Client Client;
 
 struct _Client
 {
-   Eina_Debug_Client *client;
+   Eina_Debug_Session *session;
    char *app_name;
    unsigned char    *buf;
    unsigned int      buf_size;
@@ -95,7 +95,7 @@ _client_find_by_session(Eina_Debug_Session *session)
    Eina_List *itr;
    Client *c;
    EINA_LIST_FOREACH(clients, itr, c)
-      if (eina_debug_client_session_get(c->client) == session) return c;
+      if (c->session == session) return c;
    return NULL;
 }
 
@@ -125,7 +125,7 @@ _client_del(Eina_Debug_Session *session)
    /* Update the observers */
    EINA_LIST_FOREACH(clients, itr, c)
      {
-        if (c->cl_stat_obs) eina_debug_session_send(c->client, _client_deleted_opcode, &cid, sizeof(uint32_t));
+        if (c->cl_stat_obs) eina_debug_session_send(c->session, c->cid, _client_deleted_opcode, &cid, sizeof(uint32_t));
      }
 }
 
@@ -144,10 +144,7 @@ _client_data(Eina_Debug_Session *session, void *buffer)
                {
                   char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
                   int size = hdr->size + sizeof(uint32_t) - sizeof(Eina_Debug_Packet_Header);
-                  Eina_Debug_Session *dest_session = eina_debug_client_session_get(dest->client);
-                  Eina_Debug_Client *cl = eina_debug_client_new(dest_session, src->cid);
-                  eina_debug_session_send(cl, hdr->opcode, data_buf, size);
-                  eina_debug_client_free(cl);
+                  eina_debug_session_send(dest->session, src->cid, hdr->opcode, data_buf, size);
                }
              else printf("Client %d not found\n", hdr->cid);
           }
@@ -186,10 +183,9 @@ _opcode_register(const char *op_name, uint32_t op_id)
 }
 
 static Eina_Bool
-_hello_cb(Eina_Debug_Client *src, void *buffer, int size)
+_hello_cb(Eina_Debug_Session *session, uint32_t src EINA_UNUSED, void *buffer, int size)
 {
    Eina_List *itr;
-   Eina_Debug_Session *session = eina_debug_client_session_get(src);
    if (_client_find_by_session(session)) return EINA_FALSE;
    Client *c = calloc(1, sizeof(Client));
    clients = eina_list_append(clients, c);
@@ -198,8 +194,8 @@ _hello_cb(Eina_Debug_Client *src, void *buffer, int size)
    EXTRACT(buf, &c->version, 4);
    EXTRACT(buf, &c->pid, 4);
    size -= 8;
+   c->session = session;
    c->cid = free_cid++;
-   c->client = eina_debug_client_new(session, c->cid);
    if (size > 1)
      {
         c->app_name = malloc(size);
@@ -225,24 +221,24 @@ _hello_cb(Eina_Debug_Client *src, void *buffer, int size)
      }
    EINA_LIST_FOREACH(clients, itr, c)
      {
-        if (c->cl_stat_obs) eina_debug_session_send(c->client, _client_added_opcode, buf, size);
+        if (c->cl_stat_obs) eina_debug_session_send(c->session, c->cid, _client_added_opcode, buf, size);
      }
    return EINA_TRUE;
 }
 
 static Eina_Bool
-_cid_get_cb(Eina_Debug_Client *src, void *buffer, int size EINA_UNUSED)
+_cid_get_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size EINA_UNUSED)
 {
    uint32_t pid = *(uint32_t *)buffer;
    Client *c = _client_find_by_pid(pid);
-   if (c) eina_debug_session_send(src, _cid_from_pid_opcode, &(c->cid), sizeof(uint32_t));
+   if (c) eina_debug_session_send(session, cid, _cid_from_pid_opcode, &(c->cid), sizeof(uint32_t));
    return EINA_TRUE;
 }
 
 static Eina_Bool
-_cl_stat_obs_register_cb(Eina_Debug_Client *src, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_cl_stat_obs_register_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
-   Client *c = _client_find_by_session(eina_debug_client_session_get(src));
+   Client *c = _client_find_by_session(session);
    if (!c) return EINA_FALSE;
    if (!c->cl_stat_obs)
      {
@@ -270,13 +266,13 @@ _cl_stat_obs_register_cb(Eina_Debug_Client *src, void *buffer EINA_UNUSED, int s
                   STORE(tmp, &end, 1);
                }
           }
-        eina_debug_session_send(src, _client_added_opcode, buf, size);
+        eina_debug_session_send(session, cid, _client_added_opcode, buf, size);
      }
    return EINA_TRUE;
 }
 
 static Eina_Bool
-_opcode_register_cb(Eina_Debug_Client *src, void *buffer, int size)
+_opcode_register_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size)
 {
    char *buf = buffer;
    buf += sizeof(uint64_t);
@@ -291,7 +287,7 @@ _opcode_register_cb(Eina_Debug_Client *src, void *buffer, int size)
         size -= len;
      }
 
-   eina_debug_session_send(src, EINA_DEBUG_OPCODE_REGISTER, buffer, (char *)opcodes - (char *)buffer);
+   eina_debug_session_send(session, cid, EINA_DEBUG_OPCODE_REGISTER, buffer, (char *)opcodes - (char *)buffer);
 
    return EINA_TRUE;
 }
