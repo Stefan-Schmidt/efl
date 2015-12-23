@@ -29,7 +29,7 @@ _shell_to_local_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
 {
    char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
    Eina_Debug_Packet_Header *hdr = buffer;
-   int size = hdr->size + sizeof(uint32_t) - sizeof(Eina_Debug_Packet_Header);
+   int size = hdr->size + sizeof(int) - sizeof(Eina_Debug_Packet_Header);
    eina_debug_session_send(NULL, hdr->cid, hdr->opcode, data_buf, size);
    free(buffer);
    return EINA_TRUE;
@@ -40,7 +40,7 @@ _local_to_shell_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
 {
    char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
    Eina_Debug_Packet_Header *hdr = buffer;
-   int size = hdr->size + sizeof(uint32_t) - sizeof(Eina_Debug_Packet_Header);
+   int size = hdr->size + sizeof(int) - sizeof(Eina_Debug_Packet_Header);
    eina_debug_session_send(_shell_session, hdr->cid, hdr->opcode, data_buf, size);
    free(buffer);
    return EINA_TRUE;

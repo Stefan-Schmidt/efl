@@ -38,14 +38,12 @@
 
 # define EINA_MAX_BT 256
 
-/**< Invalid opcode value */
-# define EINA_DEBUG_OPCODE_INVALID    0xFFFFFFFF
-
-/**< Opcode used to register other opcodes */
-# define EINA_DEBUG_OPCODE_REGISTER   0x00000000
-
-/**< Opcode used to send greetings to the daemon */
-# define EINA_DEBUG_OPCODE_HELLO      0x00000001
+enum
+{
+   EINA_DEBUG_OPCODE_INVALID = -1, /**< Invalid opcode value */
+   EINA_DEBUG_OPCODE_REGISTER = 0, /**< Opcode used to register other opcodes */
+   EINA_DEBUG_OPCODE_HELLO = 1 /**< Opcode used to send greetings to the daemon */
+};
 
 /**
  * @typedef Eina_Debug_Session
@@ -63,7 +61,7 @@ typedef struct _Eina_Debug_Session Eina_Debug_Session;
  * @param buffer the packet payload data
  * @param size the packet payload size
  */
-typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size);
+typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Session *session, int cid, void *buffer, int size);
 
 /**
  * @typedef Eina_Debug_Opcode_Status_Cb
@@ -140,13 +138,13 @@ typedef void *(*Eina_Debug_Decode_Cb)(const void *buffer, int size, int *ret_siz
  */
 typedef struct
 {
-   uint32_t size; /**< Packet size after this element */
+   int size; /**< Packet size after this element */
    /**<
     * During sending, it corresponds to the id of the destination. During reception, it is the id of the source
     * The daemon is in charge of swapping the id before forwarding to the destination.
     */
-   uint32_t cid;
-   uint32_t opcode; /**< Opcode of the packet */
+   int cid;
+   int opcode; /**< Opcode of the packet */
 } Eina_Debug_Packet_Header;
 
 /**
@@ -157,7 +155,7 @@ typedef struct
 typedef struct
 {
    char *opcode_name; /**< Opcode string. On registration, the daemon uses it to calculate an opcode id */
-   uint32_t *opcode_id; /**< A pointer to store the opcode id when received from the daemon */
+   int *opcode_id; /**< A pointer to store the opcode id when received from the daemon */
    Eina_Debug_Cb cb; /**< Callback to call when a packet corresponding to the opcode is received */
 } Eina_Debug_Opcode;
 
@@ -352,7 +350,7 @@ EAPI void eina_debug_opcodes_register(Eina_Debug_Session *session,
  * @param cb the callback associated to this opcode.
  */
 EAPI void eina_debug_static_opcode_register(Eina_Debug_Session *session,
-      uint32_t op_id, Eina_Debug_Cb cb);
+      int op_id, Eina_Debug_Cb cb);
 
 /**
  * @brief Send a packet to the given destination
@@ -368,7 +366,7 @@ EAPI void eina_debug_static_opcode_register(Eina_Debug_Session *session,
  *
  * @return the number of sent bytes
  */
-EAPI int eina_debug_session_send(Eina_Debug_Session *session, uint32_t dest_id, uint32_t op, void *data, int size);
+EAPI int eina_debug_session_send(Eina_Debug_Session *session, int dest_id, int op, void *data, int size);
 
 /**
  * @brief Add a timer

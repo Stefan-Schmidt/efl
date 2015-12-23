@@ -98,7 +98,7 @@ static Eina_Debug_Disconnect_Cb _server_disc_cb = NULL;
 
 /* Opcode used to load a module
  * needed by the daemon to notify loading success */
-static uint32_t _module_init_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _module_init_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 /* Used by trace timer */
 static double _trace_t0 = 0.0;
@@ -125,7 +125,7 @@ struct _Eina_Debug_Session
    Eina_Debug_Encode_Cb encode_cb; /* Packet encoder */
    Eina_Debug_Decode_Cb decode_cb; /* Packet decoder */
    double encoding_ratio; /* Encoding ratio */
-   unsigned int cbs_length; /* cbs table size */
+   int cbs_length; /* cbs table size */
    int fd_in; /* File descriptor to read */
    int fd_out; /* File descriptor to write */
    Eina_Bool magic_on_send : 1; /* Indicator to send magic on send */
@@ -141,7 +141,7 @@ static void _thread_start();
 Eina_Debug_Session *_global_session = NULL;
 
 EAPI int
-eina_debug_session_send(Eina_Debug_Session *session, uint32_t dest, uint32_t op, void *data, int size)
+eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *data, int size)
 {
    int total_size = 0;
 
@@ -155,11 +155,11 @@ eina_debug_session_send(Eina_Debug_Session *session, uint32_t dest, uint32_t op,
    total_size = size + sizeof(Eina_Debug_Packet_Header);
    unsigned char *buf = alloca(total_size);
    Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
-   hdr->size = total_size - sizeof(uint32_t);
+   hdr->size = total_size - sizeof(int);
    hdr->opcode = op;
    hdr->cid = dest;
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
-   //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(uint32_t));
+   //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(int));
    if (session->encode_cb)
      {
         int new_size = 0;
@@ -230,7 +230,7 @@ static int
 _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
 {
    double ratio = 1.0;
-   int size_sz = sizeof(uint32_t);
+   int size_sz = sizeof(int);
    unsigned char *buf = NULL;
    int rret;
 
@@ -302,7 +302,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         fprintf(stdout, "%s2:%d - %d\n", __FUNCTION__, session->fd_in, size);
         fflush(stdout);
         // allocate a buffer for real payload + header - size variable size
-        buf = realloc(buf, (size + sizeof(uint32_t)) * ratio);
+        buf = realloc(buf, (size + sizeof(int)) * ratio);
         if (buf)
           {
              recv_size = 0;
@@ -332,7 +332,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              /* Decoding all the packets */
              if (session->decode_cb)
                {
-                  *buffer = session->decode_cb(buf, (size + sizeof(uint32_t)) * ratio, NULL);
+                  *buffer = session->decode_cb(buf, (size + sizeof(int)) * ratio, NULL);
                   free(buf);
                }
              else
@@ -629,7 +629,7 @@ err:
 
 // profiling on with poll time gap as uint payload
 static Eina_Bool
-_eina_debug_prof_on_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer, int size)
+_eina_debug_prof_on_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer, int size)
 {
    unsigned int time;
    if (size >= 4)
@@ -642,7 +642,7 @@ _eina_debug_prof_on_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EIN
 }
 
 static Eina_Bool
-_eina_debug_prof_off_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_eina_debug_prof_off_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_debug_timer_add(0, NULL);
    return EINA_TRUE;
@@ -671,7 +671,7 @@ typedef struct {
    while (0)
 
 static Eina_Bool
-_module_init_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size)
+_module_init_cb(Eina_Debug_Session *session, int cid, void *buffer, int size)
 {
    _module_info minfo;
    if (size <= 0) return EINA_FALSE;
@@ -698,7 +698,7 @@ _module_init_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int siz
 }
 
 static Eina_Bool
-_module_shutdown_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_module_shutdown_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    return EINA_TRUE;
 }
@@ -722,7 +722,7 @@ _opcodes_register(void)
  * PTR64 + (opcode id)*
  */
 static Eina_Bool
-_callbacks_register_cb(Eina_Debug_Session *session, uint32_t src_id EINA_UNUSED, void *buffer, int size)
+_callbacks_register_cb(Eina_Debug_Session *session, int src_id EINA_UNUSED, void *buffer, int size)
 {
    _opcode_reply_info *info = NULL;
 
@@ -732,8 +732,8 @@ _callbacks_register_cb(Eina_Debug_Session *session, uint32_t src_id EINA_UNUSED,
 
    if (!info) return EINA_FALSE;
 
-   uint32_t *os = (uint32_t *)((unsigned char *)buffer + sizeof(uint64_t));
-   unsigned int count = (size - sizeof(uint64_t)) / sizeof(uint32_t), i;
+   int *os = (int *)((unsigned char *)buffer + sizeof(uint64_t));
+   unsigned int count = (size - sizeof(uint64_t)) / sizeof(int), i;
 
    for (i = 0; i < count; i++)
      {
@@ -1142,13 +1142,13 @@ _thread_start()
 
 EAPI void
 eina_debug_static_opcode_register(Eina_Debug_Session *session,
-      uint32_t op_id, Eina_Debug_Cb cb)
+      int op_id, Eina_Debug_Cb cb)
 {
    if(_global_session) session = _global_session;
 
    if(session->cbs_length < op_id + 1)
      {
-        unsigned int i = session->cbs_length;
+        int i = session->cbs_length;
         session->cbs_length = op_id + 16;
         session->cbs = realloc(session->cbs, session->cbs_length * sizeof(Eina_Debug_Cb));
         for(; i < session->cbs_length; i++)
@@ -1187,7 +1187,7 @@ Eina_Bool
 eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
 {
    Eina_Debug_Packet_Header *hdr =  buffer;
-   uint32_t opcode = hdr->opcode;
+   int opcode = hdr->opcode;
    Eina_Debug_Cb cb = NULL;
    Eina_Debug_Session *opcodes_session = _global_session ? _global_session : session;
 
@@ -1197,7 +1197,7 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
      {
         cb(session, hdr->cid,
               (unsigned char *)buffer + sizeof(*hdr),
-              hdr->size + sizeof(uint32_t) - sizeof(*hdr));
+              hdr->size + sizeof(int) - sizeof(*hdr));
         free(buffer);
         return EINA_TRUE;
      }

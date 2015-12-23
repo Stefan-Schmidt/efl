@@ -29,16 +29,16 @@
    _buf += sz; \
 }
 
-static uint32_t _cl_stat_reg_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
-static uint32_t _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _cl_stat_reg_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 typedef struct
 {
-   uint32_t *opcode; /* address to the opcode */
+   int *opcode; /* address to the opcode */
    void *buffer;
    int size;
 } _pending_request;
@@ -46,7 +46,7 @@ typedef struct
 static Eina_List *_pending = NULL;
 static Eina_Debug_Session *_session = NULL;
 
-static uint32_t _cid = 0;
+static int _cid = 0;
 
 static int my_argc = 0;
 static char **my_argv = NULL;
@@ -69,7 +69,7 @@ _consume()
 }
 
 static void
-_pending_add(uint32_t *opcode, void *buffer, int size)
+_pending_add(int *opcode, void *buffer, int size)
 {
    _pending_request *req = malloc(sizeof(*req));
    req->opcode = opcode;
@@ -79,26 +79,26 @@ _pending_add(uint32_t *opcode, void *buffer, int size)
 }
 
 static Eina_Bool
-_cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer, int size EINA_UNUSED)
+_cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer, int size EINA_UNUSED)
 {
-   _cid = *(uint32_t *)buffer;
+   _cid = *(int *)buffer;
    _consume();
    return EINA_TRUE;
 }
 
 static Eina_Bool
-_clients_info_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t src EINA_UNUSED, void *buffer, int size)
+_clients_info_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, void *buffer, int size)
 {
    char *buf = buffer;
    while(size)
      {
         int cid, pid, len;
-        EXTRACT(buf, &cid, sizeof(uint32_t));
-        EXTRACT(buf, &pid, sizeof(uint32_t));
+        EXTRACT(buf, &cid, sizeof(int));
+        EXTRACT(buf, &pid, sizeof(int));
         printf("CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
         len = strlen(buf) + 1;
         buf += len;
-        size -= (2 * sizeof(uint32_t) + len);
+        size -= (2 * sizeof(int) + len);
      }
    _consume();
    return EINA_TRUE;
@@ -118,16 +118,16 @@ _args_handle(Eina_Bool flag)
           }
         else if (i <= my_argc - 1)
           {
-             uint32_t pid = atoi(my_argv[i++]);
+             int pid = atoi(my_argv[i++]);
              char *buf = NULL;
-             eina_debug_session_send(_session, 0, _cid_from_pid_opcode, &pid, sizeof(uint32_t));
+             eina_debug_session_send(_session, 0, _cid_from_pid_opcode, &pid, sizeof(int));
              printf("got %s %d\n", op_str, pid);
              if ((!strcmp(op_str, "pon")) && (i <= (my_argc - 1)))
                {
-                  uint32_t freq = atoi(my_argv[i++]);
-                  buf = malloc(sizeof(uint32_t));
-                  memcpy(buf, &freq, sizeof(uint32_t));
-                  _pending_add(&_poll_on_opcode, buf, sizeof(uint32_t));
+                  int freq = atoi(my_argv[i++]);
+                  buf = malloc(sizeof(int));
+                  memcpy(buf, &freq, sizeof(int));
+                  _pending_add(&_poll_on_opcode, buf, sizeof(int));
                }
              else if (!strcmp(op_str, "poff"))
                 _pending_add(&_poll_off_opcode, NULL, 0);

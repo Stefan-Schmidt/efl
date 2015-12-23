@@ -246,7 +246,7 @@ _evlog_timer_cb()
 
 // enable evlog
 static Eina_Bool
-_start_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_start_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    char path[1024];
    snprintf(path, sizeof(path), "%s/efl_debug_evlog-%ld.log", getenv("HOME"), (long)getpid());
@@ -259,7 +259,7 @@ _start_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, voi
 
 // stop evlog
 static Eina_Bool
-_stop_cb(Eina_Debug_Session *session EINA_UNUSED, uint32_t cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
+_stop_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_stop();
    fclose(_evlog_file);
