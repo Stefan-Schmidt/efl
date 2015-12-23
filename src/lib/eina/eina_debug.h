@@ -172,15 +172,6 @@ typedef enum
 } Eina_Debug_Basic_Codec;
 
 /**
- * @brief Set reconnection flag
- *
- * Used in the daemon to prevent connection to itself. The flag is true by default.
- *
- * @param reconnect flag to set.
- */
-EAPI void eina_debug_reconnect_set(Eina_Bool reconnect);
-
-/**
  * @brief Connect to the local daemon
  *
  * @param session the session to use for this connection

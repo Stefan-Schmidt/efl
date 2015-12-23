@@ -85,8 +85,6 @@ static int                *_bt_buf_len;
 static struct timespec    *_bt_ts;
 static int                *_bt_cpu;
 
-/* Flag to enable reconnection to local daemon */
-static Eina_Bool _local_reconnect_enabled = EINA_TRUE;
 /* Local session */
 static Eina_Debug_Session *main_session = NULL;
 /* List of existing sessions */
@@ -136,6 +134,7 @@ struct _Eina_Debug_Session
 };
 
 static void _opcodes_register_all(Eina_Debug_Session *session);
+static void _thread_start();
 
 /* Global session used by daemon to store in a common place
  * the information that is common to all the opened sessions*/
@@ -367,12 +366,6 @@ error:
             "Invalid size read %i != %i\n", rret, size_sz);
 
    return -1;
-}
-
-EAPI void
-eina_debug_reconnect_set(Eina_Bool reconnect)
-{
-   _local_reconnect_enabled = reconnect;
 }
 
 EAPI Eina_Debug_Session *
@@ -877,6 +870,8 @@ eina_debug_local_connect(Eina_Debug_Session *session)
    eina_debug_session_fd_attach(session, fd);
    _eina_debug_monitor_service_greet(session);
    _opcodes_register_all(session);
+   // start the monitor thread
+   _thread_start();
    return EINA_TRUE;
 err:
    // some kind of connection failure here, so close a valid socket and
@@ -930,6 +925,8 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
         session->fd_out = pipeToShell[1];
         session->script = script;
         _script_consume(session);
+        // start the monitor thread
+        _thread_start();
      }
    return EINA_TRUE;
 }
@@ -984,6 +981,8 @@ eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb
    event.events = EPOLLIN;
    epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_fd, &event);
    umask(mask);
+   // start the monitor thread
+   _thread_start();
    return EINA_TRUE;
 err:
    if (mask) umask(mask);
@@ -1030,9 +1029,6 @@ static void *
 _monitor(void *_data EINA_UNUSED)
 {
    int ret;
-   //try to connect to main session ( will be set if main session diconnect)
-   Eina_Bool main_session_reconnect = EINA_TRUE;
-
    struct epoll_event events[MAX_EVENTS];
 
    //register opcodes for monitor - should be only once
@@ -1045,26 +1041,9 @@ _monitor(void *_data EINA_UNUSED)
    // impact the application specifically
    for (;;)
      {
-        int timeout = -1; //in milliseconds
-        //try to reconnect to main session if disconnected
-        if(_local_reconnect_enabled && main_session_reconnect)
-          {
-             if (eina_debug_local_connect(main_session))
-                main_session_reconnect = EINA_FALSE;
-          }
-
         // if we are in a polling mode then set up a timeout and wait for it
-        if (poll_time)
-          {
-             timeout = poll_time;
-          }
-        else
-          {
-             //if we are not in polling mode set a timeout
-             //so we could reconnect to main_session
-             if(main_session_reconnect)
-                timeout = 2000;
-          }
+        int timeout = poll_time ? (int)poll_time : -1; //in milliseconds
+
         ret = epoll_wait (_epfd, events, MAX_EVENTS, timeout);
 
         // if the fd for debug daemon says it's alive, process it
@@ -1077,7 +1056,6 @@ _monitor(void *_data EINA_UNUSED)
                   if (events[i].events & EPOLLHUP)
                     {
                        Eina_Debug_Session *session = _session_find_by_fd(events[i].data.fd);
-                       if(session == main_session) main_session_reconnect = EINA_TRUE;
                        _session_disconnect(session);
                     }
                   if (events[i].events & EPOLLIN)
@@ -1124,10 +1102,6 @@ _monitor(void *_data EINA_UNUSED)
                                {
                                   // major failure on debug daemon control fd - get out of here.
                                   //   else goto fail;
-                                  //if its main session we try to reconnect
-                                  if(session == main_session)
-                                     main_session_reconnect = EINA_TRUE;
-
                                   _session_disconnect(session);
                                   //TODO if its not main session we will tell the main_loop
                                   //that it disconneted
@@ -1155,8 +1129,6 @@ _thread_start()
 
    // if it's already running - we're good.
    if (_monitor_thread_runs) return;
-   main_session = eina_debug_session_new();
-   _epfd = epoll_create (MAX_EVENTS);
    // create debug monitor thread
    err = pthread_create(&_monitor_thread, NULL, _monitor, NULL);
    if (err != 0)
@@ -1336,6 +1308,7 @@ eina_debug_init(void)
    eina_semaphore_new(&_eina_debug_monitor_return_sem, 0);
    self = pthread_self();
    _eina_debug_thread_mainloop_set(&self);
+   _epfd = epoll_create (MAX_EVENTS);
 #if defined(HAVE_GETUID) && defined(HAVE_GETEUID)
    // if we are setuid - don't debug!
    if (getuid() != geteuid()) return EINA_TRUE;
@@ -1343,8 +1316,8 @@ eina_debug_init(void)
    // if someone uses the EFL_NODEBUG env var - do not do debugging. handy
    // for when this debug code is buggy itself
    if (getenv("EFL_NODEBUG")) return EINA_TRUE;
-   // start the monitor thread
-   _thread_start();
+   main_session = eina_debug_session_new();
+   eina_debug_local_connect(main_session);
    return EINA_TRUE;
 }
 

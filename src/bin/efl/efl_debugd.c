@@ -297,7 +297,6 @@ _opcode_register_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int
 int
 main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
 {
-   eina_debug_reconnect_set(EINA_FALSE);
    eina_init();
    ecore_init();
 
