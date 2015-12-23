@@ -279,9 +279,9 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
     */
    do
      {
-        rret = read(session->fd_in, buf + recv_size, size_sz - recv_size);
-        if (rret == -1 && errno != EAGAIN) goto error;
-        if (rret == 0) goto error;
+        while ((rret = read(session->fd_in, buf + recv_size, size_sz - recv_size)) == -1 &&
+              errno == EAGAIN);
+        if (rret <= 0) goto error;
         recv_size += rret;
      }
    while (recv_size != size_sz);
