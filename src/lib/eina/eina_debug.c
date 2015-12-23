@@ -171,6 +171,7 @@ eina_debug_session_send(Eina_Debug_Session *session, uint32_t dest, uint32_t op,
    int nb = write(session->fd_out, buf, total_size);
    char c = 0x0A;
    if (session->fd_in != session->fd_out) write(session->fd_out, &c, 1);
+   if (session->encode_cb) free(buf);
    return nb;
 }
 
