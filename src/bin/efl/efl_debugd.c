@@ -59,7 +59,7 @@ static Eina_Hash *_string_to_opcode_hash = NULL;
 static int free_cid = 1;
 
 static uint32_t _client_added_opcode, _client_deleted_opcode, _clients_stat_register_opcode;
-static uint32_t _cid_from_pid_opcode;
+static uint32_t _cid_from_pid_opcode, _data_test_opcode;
 
 typedef struct
 {
@@ -238,6 +238,14 @@ _cid_get_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size EI
 }
 
 static Eina_Bool
+_data_test_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer, int size)
+{
+   printf("Data test: loop packet of %d bytes\n", size);
+   eina_debug_session_send(session, cid, _data_test_opcode, buffer, size);
+   return EINA_TRUE;
+}
+
+static Eina_Bool
 _cl_stat_obs_register_cb(Eina_Debug_Session *session, uint32_t cid, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    Client *c = _client_find_by_session(session);
@@ -314,11 +322,13 @@ main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
    _client_added_opcode = _opcode_register("daemon/client_added", EINA_DEBUG_OPCODE_INVALID);
    _client_deleted_opcode = _opcode_register("daemon/client_deleted", EINA_DEBUG_OPCODE_INVALID);
    _cid_from_pid_opcode = _opcode_register("daemon/cid_from_pid", EINA_DEBUG_OPCODE_INVALID);
+   _data_test_opcode = _opcode_register("daemon/data_test", EINA_DEBUG_OPCODE_INVALID);
 
    eina_debug_static_opcode_register(NULL, EINA_DEBUG_OPCODE_REGISTER, _opcode_register_cb);
    eina_debug_static_opcode_register(NULL, EINA_DEBUG_OPCODE_HELLO, _hello_cb);
    eina_debug_static_opcode_register(NULL, _clients_stat_register_opcode, _cl_stat_obs_register_cb);
    eina_debug_static_opcode_register(NULL, _cid_from_pid_opcode, _cid_get_cb);
+   eina_debug_static_opcode_register(NULL, _data_test_opcode, _data_test_cb);
 
    ecore_main_loop_begin();
 
