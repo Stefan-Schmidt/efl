@@ -60,7 +60,7 @@ main(int argc, char **argv)
    (void)argv;
 
    _shell_session = eina_debug_session_new();
-   eina_debug_session_basic_codec_add(_shell_session, EINA_DEBUG_CODEC_BASE_16);
+   eina_debug_session_basic_codec_add(_shell_session, EINA_DEBUG_CODEC_SHELL);
    eina_debug_session_dispatch_override(_shell_session, _shell_to_local_forward);
    eina_debug_session_fd_attach(_shell_session, STDIN_FILENO);
    eina_debug_session_fd_out_set(_shell_session, STDOUT_FILENO);

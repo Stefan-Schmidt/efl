@@ -166,7 +166,7 @@ typedef struct
  */
 typedef enum
 {
-   EINA_DEBUG_CODEC_BASE_16
+   EINA_DEBUG_CODEC_SHELL
 } Eina_Debug_Basic_Codec;
 
 /**

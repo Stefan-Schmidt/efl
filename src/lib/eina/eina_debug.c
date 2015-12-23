@@ -169,8 +169,6 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
      }
    if (session->magic_on_send) write(session->fd_out, magic, 4);
    int nb = write(session->fd_out, buf, total_size);
-   char c = 0x0A;
-   if (session->fd_in != session->fd_out) write(session->fd_out, &c, 1);
    if (session->encode_cb) free(buf);
    return nb;
 }
@@ -1206,11 +1204,16 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
    return EINA_FALSE;
 }
 
+/*
+ * Encoder for shell sessions
+ * Each byte is encoded in two bytes.
+ * 0x0A is appended at the end of the new buffer, as it is needed by shells
+ */
 static void *
-_base_16_encode_cb(const void *data, int src_size, int *dest_size)
+_shell_encode_cb(const void *data, int src_size, int *dest_size)
 {
    const char *src = data;
-   int new_size = src_size * 2;
+   int new_size = src_size * 2 + 1;
    char *dest = malloc(new_size);
    int i;
    for (i = 0; i < src_size; i++)
@@ -1219,11 +1222,18 @@ _base_16_encode_cb(const void *data, int src_size, int *dest_size)
         dest[(i << 1) + 1] = ((src[i] & 0x0F) >> 0) + 0x40;
      }
    if (dest_size) *dest_size = new_size;
+   dest[new_size - 1] = 0x0A;
    return dest;
 }
 
+/*
+ * Decoder for shell sessions
+ * Each two bytes are merged into one byte.
+ * The appended 0x0A appended during encoding cannot be handled
+ * in this function, as it is not a part of the packet.
+ */
 static void *
-_base_16_decode_cb(const void *data, int src_size, int *dest_size)
+_shell_decode_cb(const void *data, int src_size, int *dest_size)
 {
    const char *src = data;
    int new_size = src_size / 2;
@@ -1259,8 +1269,8 @@ EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_D
 {
    switch(codec)
      {
-      case EINA_DEBUG_CODEC_BASE_16:
-         eina_debug_session_codec_hooks_add(session, _base_16_encode_cb, _base_16_decode_cb, 2.0);
+      case EINA_DEBUG_CODEC_SHELL:
+         eina_debug_session_codec_hooks_add(session, _shell_encode_cb, _shell_decode_cb, 2.0);
          break;
       default:
          fprintf(stderr, "EINA DEBUG ERROR: Bad basic encoding\n");
