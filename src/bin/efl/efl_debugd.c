@@ -59,7 +59,7 @@ static Eina_Hash *_string_to_opcode_hash = NULL;
 static int free_cid = 1;
 
 static int _client_added_opcode, _client_deleted_opcode, _clients_stat_register_opcode;
-static int _cid_from_pid_opcode, _data_test_opcode;
+static int _cid_from_pid_opcode, _test_loop_opcode;
 
 typedef struct
 {
@@ -241,7 +241,7 @@ static Eina_Bool
 _data_test_cb(Eina_Debug_Session *session, int cid, void *buffer, int size)
 {
    printf("Data test: loop packet of %d bytes\n", size);
-   eina_debug_session_send(session, cid, _data_test_opcode, buffer, size);
+   eina_debug_session_send(session, cid, _test_loop_opcode, buffer, size);
    return EINA_TRUE;
 }
 
@@ -316,19 +316,19 @@ main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
      }
 
    _string_to_opcode_hash = eina_hash_string_superfast_new(NULL);
-   _opcode_register("daemon/opcode_register", EINA_DEBUG_OPCODE_REGISTER);
-   _opcode_register("daemon/opcode_hello", EINA_DEBUG_OPCODE_HELLO);
-   _clients_stat_register_opcode = _opcode_register("daemon/client_status_register", EINA_DEBUG_OPCODE_INVALID);
-   _client_added_opcode = _opcode_register("daemon/client_added", EINA_DEBUG_OPCODE_INVALID);
-   _client_deleted_opcode = _opcode_register("daemon/client_deleted", EINA_DEBUG_OPCODE_INVALID);
-   _cid_from_pid_opcode = _opcode_register("daemon/cid_from_pid", EINA_DEBUG_OPCODE_INVALID);
-   _data_test_opcode = _opcode_register("daemon/data_test", EINA_DEBUG_OPCODE_INVALID);
+   _opcode_register("daemon/opcode/register", EINA_DEBUG_OPCODE_REGISTER);
+   _opcode_register("daemon/greet", EINA_DEBUG_OPCODE_HELLO);
+   _clients_stat_register_opcode = _opcode_register("daemon/observer/client/register", EINA_DEBUG_OPCODE_INVALID);
+   _client_added_opcode = _opcode_register("daemon/observer/client_added", EINA_DEBUG_OPCODE_INVALID);
+   _client_deleted_opcode = _opcode_register("daemon/observer/client_deleted", EINA_DEBUG_OPCODE_INVALID);
+   _cid_from_pid_opcode = _opcode_register("daemon/info/cid_from_pid", EINA_DEBUG_OPCODE_INVALID);
+   _test_loop_opcode = _opcode_register("daemon/test/loop", EINA_DEBUG_OPCODE_INVALID);
 
    eina_debug_static_opcode_register(NULL, EINA_DEBUG_OPCODE_REGISTER, _opcode_register_cb);
    eina_debug_static_opcode_register(NULL, EINA_DEBUG_OPCODE_HELLO, _hello_cb);
    eina_debug_static_opcode_register(NULL, _clients_stat_register_opcode, _cl_stat_obs_register_cb);
    eina_debug_static_opcode_register(NULL, _cid_from_pid_opcode, _cid_get_cb);
-   eina_debug_static_opcode_register(NULL, _data_test_opcode, _data_test_cb);
+   eina_debug_static_opcode_register(NULL, _test_loop_opcode, _data_test_cb);
 
    ecore_main_loop_begin();
 

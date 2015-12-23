@@ -31,8 +31,8 @@
 
 static int _cl_stat_reg_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
-static int _poll_on_opcode = EINA_DEBUG_OPCODE_INVALID;
-static int _poll_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _prof_on_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _prof_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 
@@ -127,10 +127,10 @@ _args_handle(Eina_Bool flag)
                   int freq = atoi(my_argv[i++]);
                   buf = malloc(sizeof(int));
                   memcpy(buf, &freq, sizeof(int));
-                  _pending_add(&_poll_on_opcode, buf, sizeof(int));
+                  _pending_add(&_prof_on_opcode, buf, sizeof(int));
                }
              else if (!strcmp(op_str, "poff"))
-                _pending_add(&_poll_off_opcode, NULL, 0);
+                _pending_add(&_prof_off_opcode, NULL, 0);
              else if (!strcmp(op_str, "evlogon"))
                 _pending_add(&_evlog_on_opcode, NULL, 0);
              else if (!strcmp(op_str, "evlogoff"))
@@ -141,11 +141,11 @@ _args_handle(Eina_Bool flag)
 
 static const Eina_Debug_Opcode ops[] =
 {
-     {"daemon/client_status_register", &_cl_stat_reg_opcode,   NULL},
-     {"daemon/client_added",           NULL,                   &_clients_info_cb},
-     {"daemon/cid_from_pid",           &_cid_from_pid_opcode,  &_cid_get_cb},
-     {"poll/on",                       &_poll_on_opcode,       NULL},
-     {"poll/off",                      &_poll_off_opcode,      NULL},
+     {"daemon/observer/client/register", &_cl_stat_reg_opcode,   NULL},
+     {"daemon/observer/client_added",  NULL,                   &_clients_info_cb},
+     {"daemon/info/cid_from_pid",      &_cid_from_pid_opcode,  &_cid_get_cb},
+     {"profiler/on",                   &_prof_on_opcode,       NULL},
+     {"profiler/off",                  &_prof_off_opcode,      NULL},
      {"evlog/on",                      &_evlog_on_opcode,      NULL},
      {"evlog/off",                     &_evlog_off_opcode,     NULL},
      {NULL, NULL, NULL}

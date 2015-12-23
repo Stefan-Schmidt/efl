@@ -702,10 +702,10 @@ _module_shutdown_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED
 }
 
 static const Eina_Debug_Opcode _EINA_DEBUG_MONITOR_OPS[] = {
-       {"PLON", NULL, &_eina_debug_prof_on_cb},
-       {"PLOF", NULL, &_eina_debug_prof_off_cb},
-       {"Module/Init", &_module_init_opcode, &_module_init_cb},
-       {"Module/Shutdown", NULL, &_module_shutdown_cb},
+       {"profiler/on", NULL, &_eina_debug_prof_on_cb},
+       {"profiler/off", NULL, &_eina_debug_prof_off_cb},
+       {"module/init", &_module_init_opcode, &_module_init_cb},
+       {"module/shutdown", NULL, &_module_shutdown_cb},
        {NULL, NULL, NULL}
 };
 
