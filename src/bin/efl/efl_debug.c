@@ -87,7 +87,7 @@ _cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *
 }
 
 static Eina_Bool
-_clients_info_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, void *buffer, int size)
+_clients_info_added_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, void *buffer, int size)
 {
    char *buf = buffer;
    while(size)
@@ -95,10 +95,25 @@ _clients_info_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, v
         int cid, pid, len;
         EXTRACT(buf, &cid, sizeof(int));
         EXTRACT(buf, &pid, sizeof(int));
-        printf("CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
+        printf("Added: CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
         len = strlen(buf) + 1;
         buf += len;
         size -= (2 * sizeof(int) + len);
+     }
+   _consume();
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_clients_info_deleted_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, void *buffer, int size)
+{
+   char *buf = buffer;
+   while(size)
+     {
+        int cid;
+        EXTRACT(buf, &cid, sizeof(int));
+        printf("Deleted: CID: %d\n", cid);
+        size -= sizeof(int);
      }
    _consume();
    return EINA_TRUE;
@@ -142,7 +157,8 @@ _args_handle(Eina_Bool flag)
 static const Eina_Debug_Opcode ops[] =
 {
      {"daemon/observer/client/register", &_cl_stat_reg_opcode,   NULL},
-     {"daemon/observer/client_added",  NULL,                   &_clients_info_cb},
+     {"daemon/observer/client_added",   NULL,                  &_clients_info_added_cb},
+     {"daemon/observer/client_deleted", NULL,                  &_clients_info_deleted_cb},
      {"daemon/info/cid_from_pid",      &_cid_from_pid_opcode,  &_cid_get_cb},
      {"profiler/on",                   &_prof_on_opcode,       NULL},
      {"profiler/off",                  &_prof_off_opcode,      NULL},
