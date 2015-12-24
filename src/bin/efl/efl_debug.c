@@ -28,6 +28,11 @@
    memcpy(pval, _buf, sz); \
    _buf += sz; \
 }
+#define _EVLOG_INTERVAL 0.2
+
+static int               _evlog_max_times = 0;
+static Ecore_Timer      *_evlog_fetch_timer = NULL;
+static FILE             *_evlog_file = NULL;
 
 static int _cl_stat_reg_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _cid_from_pid_opcode = EINA_DEBUG_OPCODE_INVALID;
@@ -35,6 +40,7 @@ static int _prof_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _prof_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
+static int _evlog_get_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 static Eina_Debug_Session *_session = NULL;
 
@@ -42,6 +48,59 @@ static int _cid = 0;
 
 static int my_argc = 0;
 static char **my_argv = NULL;
+
+static Eina_Bool
+_evlog_get_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, void *buffer, int size)
+{
+   static int received_times = 0;
+   unsigned char *d = buffer;
+   unsigned int *overflow = (unsigned int *)(d + 0);
+   unsigned char *p = d + 4;
+   unsigned int blocksize = size - 4;
+
+   if(++received_times <= _evlog_max_times)
+     {
+        if ((_evlog_file) && (blocksize > 0))
+          {
+             unsigned int header[3];
+
+             header[0] = 0xffee211;
+             header[1] = blocksize;
+             header[2] = *overflow;
+             fwrite(header, 12, 1, _evlog_file);
+             fwrite(p, blocksize, 1, _evlog_file);
+          }
+     }
+
+   if(received_times == _evlog_max_times)
+     {
+        printf("Received last evlog response\n");
+        fclose(_evlog_file);
+        _evlog_file = NULL;
+        ecore_main_loop_quit();
+     }
+
+   return EINA_TRUE;
+}
+
+static Eina_Bool
+_cb_evlog(void *data EINA_UNUSED)
+{
+   static int sent_times = 0;
+   Eina_Bool ret = ECORE_CALLBACK_RENEW;
+   if(++sent_times <= _evlog_max_times)
+         eina_debug_session_send(_session, _cid, _evlog_get_opcode, NULL, 0);
+
+   if(sent_times == _evlog_max_times)
+     {
+        eina_debug_session_send(_session, _cid, _evlog_off_opcode, NULL, 0);
+        ecore_timer_del(_evlog_fetch_timer);
+        _evlog_fetch_timer = NULL;
+        ret = ECORE_CALLBACK_CANCEL;
+     }
+
+   return ret;
+}
 
 static Eina_Bool
 _cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer, int size EINA_UNUSED)
@@ -59,9 +118,26 @@ _cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *
         eina_debug_session_send(_session, _cid, _prof_on_opcode, buf, sizeof(int));
      }
    else if (!strcmp(op_str, "poff"))
-        eina_debug_session_send(_session, _cid, _prof_off_opcode,  NULL, 0);
-   else if (!strcmp(op_str, "evlogon"))
+      eina_debug_session_send(_session, _cid, _prof_off_opcode,  NULL, 0);
+   else if (!strcmp(op_str, "evlogon") && (3 <= (my_argc - 1)))
+     {
+        double max_time;
+        sscanf(my_argv[3], "%lf", &max_time);
+        _evlog_max_times = max_time > 0 ? (max_time/_EVLOG_INTERVAL+1) : 1;
+        eina_debug_session_send(_session, 0, _cl_stat_reg_opcode, NULL, 0);
+        printf("Evlog request will be sent %d times\n", _evlog_max_times);
         eina_debug_session_send(_session, _cid, _evlog_on_opcode,  NULL, 0);
+
+        /* Creating the evlog file and setting the timer */
+        char path[4096];
+        int pid = atoi(my_argv[2]);
+        snprintf(path, sizeof(path), "%s/efl_debug_evlog-%ld.log",
+              getenv("HOME"), (long)pid);
+        _evlog_file = fopen(path, "wb");
+        _evlog_fetch_timer = ecore_timer_add(_EVLOG_INTERVAL, _cb_evlog, NULL);
+
+        quit = EINA_FALSE;
+     }
    else if (!strcmp(op_str, "evlogoff"))
         eina_debug_session_send(_session, _cid, _evlog_off_opcode,  NULL, 0);
 
@@ -80,7 +156,9 @@ _clients_info_added_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNU
         int cid, pid, len;
         EXTRACT(buf, &cid, sizeof(int));
         EXTRACT(buf, &pid, sizeof(int));
-        printf("Added: CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
+        /* We dont need client notifications on evlog */
+        if(!_evlog_fetch_timer)
+           printf("Added: CID: %d - PID: %d - Name: %s\n", cid, pid, buf);
         len = strlen(buf) + 1;
         buf += len;
         size -= (2 * sizeof(int) + len);
@@ -96,8 +174,23 @@ _clients_info_deleted_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_U
      {
         int cid;
         EXTRACT(buf, &cid, sizeof(int));
-        printf("Deleted: CID: %d\n", cid);
         size -= sizeof(int);
+
+        /* If client deleted dont send anymore evlog requests */
+        if(_evlog_fetch_timer)
+          {
+             if(_cid == cid)
+               {
+                  printf("Evlog debugged App closed (CID: %d), stopping evlog\n", cid);
+                  ecore_timer_del(_evlog_fetch_timer);
+                  _evlog_fetch_timer = NULL;
+                  fclose(_evlog_file);
+                  _evlog_file = NULL;
+                  ecore_main_loop_quit();
+               }
+          }
+        else
+           printf("Deleted: CID: %d\n", cid);
      }
    return EINA_TRUE;
 }
@@ -143,6 +236,7 @@ static const Eina_Debug_Opcode ops[] =
      {"profiler/off",                  &_prof_off_opcode,      NULL},
      {"evlog/on",                      &_evlog_on_opcode,      NULL},
      {"evlog/off",                     &_evlog_off_opcode,     NULL},
+     {"evlog/get",                     &_evlog_get_opcode,     _evlog_get_cb},
      {NULL, NULL, NULL}
 };
 

@@ -47,13 +47,13 @@ static int             _evlog_go = 0;
 static Eina_Evlog_Buf *buf; // current event log we are writing events to
 static Eina_Evlog_Buf  buffers[2]; // double-buffer our event log buffers
 
-static FILE *_evlog_file = NULL;
-
 #if defined (HAVE_CLOCK_GETTIME) || defined (EXOTIC_PROVIDE_CLOCK_GETTIME)
 static clockid_t _eina_evlog_time_clock_id = -1;
 #elif defined(__APPLE__) && defined(__MACH__)
 static double _eina_evlog_time_clock_conversion = 1e-9;
 #endif
+
+static int _evlog_get_opcode = EINA_DEBUG_OPCODE_INVALID;
 
 static inline double
 get_time(void)
@@ -226,21 +226,24 @@ eina_evlog_stop(void)
    eina_spinlock_release(&_evlog_lock);
 }
 
+// get evlog
 static Eina_Bool
-_evlog_timer_cb()
+_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
-   if (!_evlog_go) return EINA_FALSE;
    Eina_Evlog_Buf *evlog = eina_evlog_steal();
-   if ((_evlog_file) && (evlog->top > 0))
-     {
-        unsigned int header[3];
+   int resp_size = 0;
+   unsigned char *resp_buf = NULL;
 
-        header[0] = 0xffee211;
-        header[1] = evlog->top;
-        header[2] = evlog->overflow;
-        fwrite(header, 12, 1, _evlog_file);
-        fwrite(evlog->buf, evlog->top, 1, _evlog_file);
+   if ((evlog) && (evlog->buf))
+     {
+        resp_size = evlog->top + sizeof(evlog->overflow);
+        resp_buf = alloca(resp_size);
+        memcpy(buf, &(evlog->overflow), sizeof(evlog->overflow));
+        memcpy(buf + sizeof(evlog->overflow), evlog->buf, evlog->top);
      }
+   printf("send evlog size %d\n", resp_size);
+   eina_debug_session_send(session, cid, _evlog_get_opcode, resp_buf, resp_size);
+
    return EINA_TRUE;
 }
 
@@ -248,12 +251,7 @@ _evlog_timer_cb()
 static Eina_Bool
 _start_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
-   char path[1024];
-   snprintf(path, sizeof(path), "%s/efl_debug_evlog-%ld.log", getenv("HOME"), (long)getpid());
-   _evlog_file = fopen(path, "wb");
    eina_evlog_start();
-   /* FIXME: should register a timer in the eina debug recv thread */
-   eina_debug_timer_add(200, _evlog_timer_cb);
    return EINA_TRUE;
 }
 
@@ -262,14 +260,14 @@ static Eina_Bool
 _stop_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer EINA_UNUSED, int size EINA_UNUSED)
 {
    eina_evlog_stop();
-   fclose(_evlog_file);
-   _evlog_file = NULL;
+
    return EINA_TRUE;
 }
 
 static const Eina_Debug_Opcode _EINA_DEBUG_EVLOG_OPS[] = {
        {"evlog/on", NULL, &_start_cb},
        {"evlog/off", NULL, &_stop_cb},
+       {"evlog/get", &_evlog_get_opcode, &_get_cb},
        {NULL, NULL, NULL}
 };
 
