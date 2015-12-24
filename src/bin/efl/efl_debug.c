@@ -36,14 +36,6 @@ static int _prof_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _evlog_on_opcode = EINA_DEBUG_OPCODE_INVALID;
 static int _evlog_off_opcode = EINA_DEBUG_OPCODE_INVALID;
 
-typedef struct
-{
-   int *opcode; /* address to the opcode */
-   void *buffer;
-   int size;
-} _pending_request;
-
-static Eina_List *_pending = NULL;
 static Eina_Debug_Session *_session = NULL;
 
 static int _cid = 0;
@@ -51,38 +43,31 @@ static int _cid = 0;
 static int my_argc = 0;
 static char **my_argv = NULL;
 
-static void
-_consume()
-{
-   if (!_pending)
-     {
-        ecore_main_loop_quit();
-        return;
-     }
-   _pending_request *req = eina_list_data_get(_pending);
-   _pending = eina_list_remove(_pending, req);
-
-   eina_debug_session_send(_session, _cid, *(req->opcode), req->buffer, req->size);
-
-   free(req->buffer);
-   free(req);
-}
-
-static void
-_pending_add(int *opcode, void *buffer, int size)
-{
-   _pending_request *req = malloc(sizeof(*req));
-   req->opcode = opcode;
-   req->buffer = buffer;
-   req->size = size;
-   _pending = eina_list_append(_pending, req);
-}
-
 static Eina_Bool
 _cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buffer, int size EINA_UNUSED)
 {
    _cid = *(int *)buffer;
-   _consume();
+
+   const char *op_str = my_argv[1];
+   Eina_Bool quit = EINA_TRUE;
+
+   if ((!strcmp(op_str, "pon")) && (3 <= (my_argc - 1)))
+     {
+        int freq = atoi(my_argv[3]);
+        char *buf = malloc(sizeof(int));
+        memcpy(buf, &freq, sizeof(int));
+        eina_debug_session_send(_session, _cid, _prof_on_opcode, buf, sizeof(int));
+     }
+   else if (!strcmp(op_str, "poff"))
+        eina_debug_session_send(_session, _cid, _prof_off_opcode,  NULL, 0);
+   else if (!strcmp(op_str, "evlogon"))
+        eina_debug_session_send(_session, _cid, _evlog_on_opcode,  NULL, 0);
+   else if (!strcmp(op_str, "evlogoff"))
+        eina_debug_session_send(_session, _cid, _evlog_off_opcode,  NULL, 0);
+
+   if(quit)
+        ecore_main_loop_quit();
+
    return EINA_TRUE;
 }
 
@@ -100,7 +85,6 @@ _clients_info_added_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNU
         buf += len;
         size -= (2 * sizeof(int) + len);
      }
-   _consume();
    return EINA_TRUE;
 }
 
@@ -115,42 +99,37 @@ _clients_info_deleted_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_U
         printf("Deleted: CID: %d\n", cid);
         size -= sizeof(int);
      }
-   _consume();
+   return EINA_TRUE;
+}
+
+static void
+_ecore_thread_dispatcher(void *data)
+{
+   eina_debug_dispatch(_session, data);
+}
+
+Eina_Bool
+_disp_cb(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
+{
+   ecore_main_loop_thread_safe_call_async(_ecore_thread_dispatcher, buffer);
    return EINA_TRUE;
 }
 
 static void
 _args_handle(Eina_Bool flag)
 {
-   int i;
    if (!flag) exit(0);
-   for (i = 1; i < my_argc;)
+   eina_debug_session_dispatch_override(_session, _disp_cb);;
+
+   const char *op_str = my_argv[1];
+   if (!strcmp(op_str, "list"))
      {
-        const char *op_str = my_argv[i++];
-        if (!strcmp(op_str, "list"))
-          {
-             eina_debug_session_send(_session, 0, _cl_stat_reg_opcode, NULL, 0);
-          }
-        else if (i <= my_argc - 1)
-          {
-             int pid = atoi(my_argv[i++]);
-             char *buf = NULL;
-             eina_debug_session_send(_session, 0, _cid_from_pid_opcode, &pid, sizeof(int));
-             printf("got %s %d\n", op_str, pid);
-             if ((!strcmp(op_str, "pon")) && (i <= (my_argc - 1)))
-               {
-                  int freq = atoi(my_argv[i++]);
-                  buf = malloc(sizeof(int));
-                  memcpy(buf, &freq, sizeof(int));
-                  _pending_add(&_prof_on_opcode, buf, sizeof(int));
-               }
-             else if (!strcmp(op_str, "poff"))
-                _pending_add(&_prof_off_opcode, NULL, 0);
-             else if (!strcmp(op_str, "evlogon"))
-                _pending_add(&_evlog_on_opcode, NULL, 0);
-             else if (!strcmp(op_str, "evlogoff"))
-                _pending_add(&_evlog_off_opcode, NULL, 0);
-          }
+        eina_debug_session_send(_session, 0, _cl_stat_reg_opcode, NULL, 0);
+     }
+   else if (2 <= my_argc - 1)
+     {
+        int pid = atoi(my_argv[2]);
+        eina_debug_session_send(_session, 0, _cid_from_pid_opcode, &pid, sizeof(int));
      }
 }
 
