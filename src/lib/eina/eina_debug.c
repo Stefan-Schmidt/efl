@@ -299,7 +299,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              free(size_buf);
           }
         else size = *(int *)buf;
-        fprintf(stdout, "%s2:%d - %d\n", __FUNCTION__, session->fd_in, size);
+        fprintf(stdout, "%s2:%d/%d - %d\n", __FUNCTION__, getpid(), session->fd_in, size);
         fflush(stdout);
         // allocate a buffer for real payload + header - size variable size
         buf = realloc(buf, (size + sizeof(int)) * ratio);
