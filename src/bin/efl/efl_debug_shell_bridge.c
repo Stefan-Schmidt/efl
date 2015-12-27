@@ -22,7 +22,7 @@
 
 #include <unistd.h>
 
-static Eina_Debug_Session *_shell_session = NULL;
+static Eina_Debug_Session *_shell_session = NULL, *_local_session = NULL;
 
 static Eina_Bool
 _shell_to_local_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
@@ -30,7 +30,7 @@ _shell_to_local_forward(Eina_Debug_Session *session EINA_UNUSED, void *buffer)
    char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
    Eina_Debug_Packet_Header *hdr = buffer;
    int size = hdr->size + sizeof(int) - sizeof(Eina_Debug_Packet_Header);
-   eina_debug_session_send(NULL, hdr->cid, hdr->opcode, data_buf, size);
+   eina_debug_session_send(_local_session, hdr->cid, hdr->opcode, data_buf, size);
    free(buffer);
    return EINA_TRUE;
 }
@@ -53,11 +53,16 @@ main(int argc, char **argv)
    fflush(stdout);
    sleep(1);
 
+   eina_debug_default_connection_disable();
    eina_init();
    ecore_init();
 
    (void)argc;
    (void)argv;
+
+   _local_session = eina_debug_session_new();
+   eina_debug_session_dispatch_override(_local_session, _local_to_shell_forward);
+   eina_debug_local_connect(_local_session, EINA_DEBUG_SESSION_MASTER);
 
    _shell_session = eina_debug_session_new();
    eina_debug_session_basic_codec_add(_shell_session, EINA_DEBUG_CODEC_SHELL);
@@ -65,8 +70,6 @@ main(int argc, char **argv)
    eina_debug_session_fd_attach(_shell_session, STDIN_FILENO);
    eina_debug_session_fd_out_set(_shell_session, STDOUT_FILENO);
    eina_debug_session_magic_set_on_send(_shell_session);
-
-   eina_debug_session_dispatch_override(NULL, _local_to_shell_forward);
 
    ecore_main_loop_begin();
 

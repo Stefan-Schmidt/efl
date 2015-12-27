@@ -243,6 +243,7 @@ static const Eina_Debug_Opcode ops[] =
 int
 main(int argc, char **argv)
 {
+   eina_debug_default_connection_disable();
    eina_init();
    ecore_init();
 
@@ -250,7 +251,7 @@ main(int argc, char **argv)
    my_argv = argv;
 
    _session = eina_debug_session_new();
-   if (!eina_debug_local_connect(_session))
+   if (!eina_debug_local_connect(_session, EINA_DEBUG_SESSION_MASTER))
      {
         fprintf(stderr, "ERROR: Cannot connect to debug daemon.\n");
         return -1;

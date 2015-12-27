@@ -170,13 +170,41 @@ typedef enum
 } Eina_Debug_Basic_Codec;
 
 /**
+ * @enum Eina_Debug_Session_Type
+ *
+ * Type of the client.
+ *
+ * This type is useful for the daemon to separate debug tools (masters) and
+ * debugged applications (slaves).
+ * A master/slave cannot respectively send requests to another master/slave,
+ * as it may create a security issue.
+ *
+ * It doesn't prevent debug tools to be debugged as they connect to the daemon
+ * as master AND slave.
+ */
+typedef enum
+{
+   EINA_DEBUG_SESSION_MASTER,
+   EINA_DEBUG_SESSION_SLAVE
+} Eina_Debug_Session_Type;
+
+/**
+ * @brief Disable default connection to local daemon
+ *
+ * Useful for bridge to prevent a connection as slave.
+ * Need to be invoked before eina_init.
+ */
+EAPI void eina_debug_default_connection_disable(void);
+
+/**
  * @brief Connect to the local daemon
  *
  * @param session the session to use for this connection
+ * @param type session type
  *
  * @return EINA_TRUE on success, EINA_FALSE otherwise.
  */
-EAPI Eina_Bool eina_debug_local_connect(Eina_Debug_Session *session);
+EAPI Eina_Bool eina_debug_local_connect(Eina_Debug_Session *session, Eina_Debug_Session_Type type);
 
 /**
  * @brief Launch the server side
@@ -202,7 +230,8 @@ EAPI Eina_Bool eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debu
  *
  * @return EINA_TRUE on success, EINA_FALSE otherwise.
  */
-EAPI Eina_Bool eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Eina_List *script);
+EAPI Eina_Bool eina_debug_shell_remote_connect(Eina_Debug_Session *session,
+      const char *cmd, Eina_List *script);
 
 /* TEMP: should be private to debug thread module */
 void _eina_debug_thread_add(void *th);
@@ -315,6 +344,14 @@ EAPI void eina_debug_session_magic_set_on_send(Eina_Debug_Session *session);
  * @param session the session
  */
 EAPI void eina_debug_session_magic_set_on_recv(Eina_Debug_Session *session);
+
+/**
+ * @brief Get the session type.
+ *
+ * @param session the session
+ * @return the type
+ */
+EAPI Eina_Debug_Session_Type eina_debug_session_type_get(const Eina_Debug_Session *session);
 
 /**
  * @brief Dispatch a given packet according to its header.

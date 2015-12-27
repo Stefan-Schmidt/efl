@@ -58,7 +58,7 @@ static Eina_Hash *_string_to_opcode_hash = NULL;
 
 static int free_cid = 1;
 
-static int _client_added_opcode, _client_deleted_opcode, _clients_stat_register_opcode;
+static int _clients_stat_register_opcode, _slave_added_opcode, _slave_deleted_opcode;
 static int _cid_from_pid_opcode, _test_loop_opcode;
 
 typedef struct
@@ -105,6 +105,7 @@ _client_del(Eina_Debug_Session *session)
 {
    Client *c = _client_find_by_session(session);
    if (!c) return;
+   Eina_Debug_Session_Type type = eina_debug_session_type_get(session);
    int cid = c->cid;
    Eina_List *itr;
    if (c)
@@ -124,9 +125,11 @@ _client_del(Eina_Debug_Session *session)
      }
    eina_debug_session_free(session);
    /* Update the observers */
+   if (type == EINA_DEBUG_SESSION_MASTER) return;
    EINA_LIST_FOREACH(clients, itr, c)
      {
-        if (c->cl_stat_obs) eina_debug_session_send(c->session, c->cid, _client_deleted_opcode, &cid, sizeof(int));
+        if (c->cl_stat_obs) eina_debug_session_send(c->session, c->cid,
+              _slave_deleted_opcode, &cid, sizeof(int));
      }
 }
 
@@ -189,6 +192,7 @@ _hello_cb(Eina_Debug_Session *session, int src EINA_UNUSED, void *buffer, int si
 {
    Eina_List *itr;
    if (_client_find_by_session(session)) return EINA_FALSE;
+   Eina_Debug_Session_Type type = eina_debug_session_type_get(session);
    Client *c = calloc(1, sizeof(Client));
    clients = eina_list_append(clients, c);
    char *buf = buffer;
@@ -204,7 +208,9 @@ _hello_cb(Eina_Debug_Session *session, int src EINA_UNUSED, void *buffer, int si
         strncpy(c->app_name, buf, size);
         c->app_name[size - 1] = '\0';
      }
-   printf("Connection from pid %d - name %s\n", c->pid, c->app_name);
+   printf("Connection from %s: pid %d - name %s\n",
+         type == EINA_DEBUG_SESSION_MASTER ? "Master" : "Slave",
+         c->pid, c->app_name);
    /* Update the observers */
    size = 2 * sizeof(int) + (c->app_name ? strlen(c->app_name) : 0) + 1; /* cid + pid + name + \0 */
    buf = alloca(size);
@@ -221,9 +227,11 @@ _hello_cb(Eina_Debug_Session *session, int src EINA_UNUSED, void *buffer, int si
         char end = '\0';
         STORE(tmp, &end, 1);
      }
+   if (type == EINA_DEBUG_SESSION_MASTER) return EINA_TRUE;
    EINA_LIST_FOREACH(clients, itr, c)
      {
-        if (c->cl_stat_obs) eina_debug_session_send(c->session, c->cid, _client_added_opcode, buf, size);
+        if (c->cl_stat_obs) eina_debug_session_send(c->session, c->cid,
+              _slave_added_opcode, buf, size);
      }
    return EINA_TRUE;
 }
@@ -253,17 +261,18 @@ _cl_stat_obs_register_cb(Eina_Debug_Session *session, int cid, void *buffer EINA
    if (!c->cl_stat_obs)
      {
         Eina_List *itr;
-        int n = eina_list_count(clients);
         c->cl_stat_obs = EINA_TRUE;
-        size = (2 * n) * sizeof(int); /* nb*(cid+pid) */
+        size = 0;
         EINA_LIST_FOREACH(clients, itr, c)
           {
-             size += (c->app_name ? strlen(c->app_name) : 0) + 1;
+             if (eina_debug_session_type_get(c->session) == EINA_DEBUG_SESSION_MASTER) continue;
+             size += (2 * sizeof(int) + (c->app_name ? strlen(c->app_name) : 0) + 1);
           }
         char *buf = alloca(size), *tmp = buf;
         if (!buf) return EINA_FALSE;
         EINA_LIST_FOREACH(clients, itr, c)
           {
+             if (eina_debug_session_type_get(c->session) == EINA_DEBUG_SESSION_MASTER) continue;
              STORE(tmp, &c->cid, sizeof(int));
              STORE(tmp, &c->pid, sizeof(int));
              if (c->app_name)
@@ -276,7 +285,7 @@ _cl_stat_obs_register_cb(Eina_Debug_Session *session, int cid, void *buffer EINA
                   STORE(tmp, &end, 1);
                }
           }
-        eina_debug_session_send(session, cid, _client_added_opcode, buf, size);
+        eina_debug_session_send(session, cid, _slave_added_opcode, buf, size);
      }
    return EINA_TRUE;
 }
@@ -319,8 +328,8 @@ main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
    _opcode_register("daemon/opcode/register", EINA_DEBUG_OPCODE_REGISTER);
    _opcode_register("daemon/greet", EINA_DEBUG_OPCODE_HELLO);
    _clients_stat_register_opcode = _opcode_register("daemon/observer/client/register", EINA_DEBUG_OPCODE_INVALID);
-   _client_added_opcode = _opcode_register("daemon/observer/client_added", EINA_DEBUG_OPCODE_INVALID);
-   _client_deleted_opcode = _opcode_register("daemon/observer/client_deleted", EINA_DEBUG_OPCODE_INVALID);
+   _slave_added_opcode = _opcode_register("daemon/observer/slave_added", EINA_DEBUG_OPCODE_INVALID);
+   _slave_deleted_opcode = _opcode_register("daemon/observer/slave_deleted", EINA_DEBUG_OPCODE_INVALID);
    _cid_from_pid_opcode = _opcode_register("daemon/info/cid_from_pid", EINA_DEBUG_OPCODE_INVALID);
    _test_loop_opcode = _opcode_register("daemon/test/loop", EINA_DEBUG_OPCODE_INVALID);
 

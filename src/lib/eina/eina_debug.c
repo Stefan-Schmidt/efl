@@ -87,10 +87,11 @@ static int                *_bt_cpu;
 
 /* Local session */
 static Eina_Debug_Session *main_session = NULL;
+static Eina_Bool _default_connection_disabled = EINA_FALSE;
 /* List of existing sessions */
 static Eina_List *sessions = NULL;
 /* epoll stuff */
-static int _epfd = -1, _listening_fd = -1;
+static int _epfd = -1, _listening_master_fd = -1, _listening_slave_fd = -1;
 
 /* Used by the daemon to be notified about connections changes */
 static Eina_Debug_Connect_Cb _server_conn_cb = NULL;
@@ -128,6 +129,7 @@ struct _Eina_Debug_Session
    int cbs_length; /* cbs table size */
    int fd_in; /* File descriptor to read */
    int fd_out; /* File descriptor to write */
+   Eina_Debug_Session_Type type; /* Session is Master or Slave. Only used by daemon. */
    Eina_Bool magic_on_send : 1; /* Indicator to send magic on send */
    Eina_Bool magic_on_recv : 1; /* Indicator to expect magic on recv */
    Eina_Bool wait_for_input : 1; /* Indicator to wait for input before continuing sending */
@@ -365,6 +367,12 @@ error:
             "Invalid size read %i != %i\n", rret, size_sz);
 
    return -1;
+}
+
+EAPI void
+eina_debug_default_connection_disable()
+{
+   _default_connection_disabled = EINA_TRUE;
 }
 
 EAPI Eina_Debug_Session *
@@ -829,13 +837,14 @@ _socket_home_get()
 
 #define SERVER_PATH ".edebug"
 #define SERVER_NAME "efl_debug"
-#define SERVER_PORT 0
+#define SERVER_MASTER_PORT 0
+#define SERVER_SLAVE_PORT 1
 
 #define LENGTH_OF_SOCKADDR_UN(s) \
    (strlen((s)->sun_path) + (size_t)(((struct sockaddr_un *)NULL)->sun_path))
 
 EAPI Eina_Bool
-eina_debug_local_connect(Eina_Debug_Session *session)
+eina_debug_local_connect(Eina_Debug_Session *session, Eina_Debug_Session_Type type)
 {
    char buf[4096];
    int fd, socket_unix_len, curstate = 0;
@@ -848,7 +857,8 @@ eina_debug_local_connect(Eina_Debug_Session *session)
    //   /var/run/UID/.ecore/efl_debug/0
    // either way a 4k buffer should be ebough ( if it's not we're on an
    // insane system)
-   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_PORT);
+   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME,
+         type == EINA_DEBUG_SESSION_MASTER ? SERVER_MASTER_PORT : SERVER_SLAVE_PORT);
    // create the socket
    fd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (fd < 0) goto err;
@@ -930,12 +940,41 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
    return EINA_TRUE;
 }
 
+static int
+_local_listening_socket_create(const char *path)
+{
+   struct sockaddr_un socket_unix;
+   int fd, socket_unix_len, curstate = 0;
+   // create the socket
+   fd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (fd < 0) goto err;
+   // set the socket to close when we exec things so they don't inherit it
+   if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) goto err;
+   // set up some socket options on addr re-use
+   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&curstate,
+                  sizeof(curstate)) < 0)
+     goto err;
+   // sa that it's a unix socket and where the path is
+   socket_unix.sun_family = AF_UNIX;
+   strncpy(socket_unix.sun_path, path, sizeof(socket_unix.sun_path));
+   socket_unix_len = LENGTH_OF_SOCKADDR_UN(&socket_unix);
+   unlink(socket_unix.sun_path);
+   if (bind(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
+     {
+        perror("ERROR on binding");
+        goto err;
+     }
+   listen(fd, 5);
+   return fd;
+err:
+   if (fd >= 0) close(fd);
+   return -1;
+}
+
 EAPI Eina_Bool
 eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb disc_cb)
 {
    char buf[4096];
-   int fd, socket_unix_len, curstate = 0;
-   struct sockaddr_un socket_unix;
    struct epoll_event event = {0};
    mode_t mask = 0;
 
@@ -951,41 +990,32 @@ eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb
         perror("mkdir SERVER_NAME");
         goto err;
      }
-   sprintf(buf, "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_PORT);
    mask = umask(S_IRWXG | S_IRWXO);
-   // create the socket
-   fd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (fd < 0) goto err;
-   // set the socket to close when we exec things so they don't inherit it
-   if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) goto err;
-   // set up some socket options on addr re-use
-   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&curstate,
-                  sizeof(curstate)) < 0)
-     goto err;
-   // sa that it's a unix socket and where the path is
-   socket_unix.sun_family = AF_UNIX;
-   strncpy(socket_unix.sun_path, buf, sizeof(socket_unix.sun_path));
-   socket_unix_len = LENGTH_OF_SOCKADDR_UN(&socket_unix);
-   unlink(socket_unix.sun_path);
-   if (bind(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
-     {
-        perror("ERROR on binding");
-        goto err;
-     }
-   listen(fd, 5);
-   _listening_fd = fd;
+   sprintf(buf, "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_MASTER_PORT);
+   _listening_master_fd = _local_listening_socket_create(buf);
+   if (_listening_master_fd <= 0) goto err;
+   event.data.fd = _listening_master_fd;
+   event.events = EPOLLIN;
+   epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_master_fd, &event);
+   sprintf(buf, "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_SLAVE_PORT);
+   _listening_slave_fd = _local_listening_socket_create(buf);
+   if (_listening_slave_fd <= 0) goto err;
+   event.data.fd = _listening_slave_fd;
+   event.events = EPOLLIN;
+   epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_slave_fd, &event);
+   umask(mask);
+
    _server_conn_cb = conn_cb;
    _server_disc_cb = disc_cb;
-   event.data.fd = _listening_fd;
-   event.events = EPOLLIN;
-   epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_fd, &event);
-   umask(mask);
    // start the monitor thread
    _thread_start();
    return EINA_TRUE;
 err:
    if (mask) umask(mask);
-   if (fd >= 0) close(fd);
+   if (_listening_master_fd >= 0) close(_listening_master_fd);
+   _listening_master_fd = -1;
+   if (_listening_slave_fd >= 0) close(_listening_slave_fd);
+   _listening_slave_fd = -1;
    return EINA_FALSE;
 }
 
@@ -1062,15 +1092,31 @@ _monitor(void *_data EINA_UNUSED)
                        int size;
                        unsigned char *buffer;
 
-                       //someone wants to connect
-                       if(events[i].data.fd == _listening_fd)
+                       // A master client wants to connect
+                       if(events[i].data.fd == _listening_master_fd)
                          {
-                            int new_fd = accept(_listening_fd, NULL, NULL);
+                            int new_fd = accept(_listening_master_fd, NULL, NULL);
                             if (new_fd <= 0) perror("Accept");
                             else
                               {
                                  Eina_Debug_Session *new_fd_session = eina_debug_session_new();
                                  eina_debug_session_fd_attach(new_fd_session, new_fd);
+                                 new_fd_session->type = EINA_DEBUG_SESSION_MASTER;
+                                 if (_server_conn_cb) _server_conn_cb(new_fd_session);
+                              }
+                            continue;
+                         }
+
+                       // A slave client wants to connect
+                       if(events[i].data.fd == _listening_slave_fd)
+                         {
+                            int new_fd = accept(_listening_slave_fd, NULL, NULL);
+                            if (new_fd <= 0) perror("Accept");
+                            else
+                              {
+                                 Eina_Debug_Session *new_fd_session = eina_debug_session_new();
+                                 eina_debug_session_fd_attach(new_fd_session, new_fd);
+                                 new_fd_session->type = EINA_DEBUG_SESSION_SLAVE;
                                  if (_server_conn_cb) _server_conn_cb(new_fd_session);
                               }
                             continue;
@@ -1291,6 +1337,12 @@ eina_debug_session_magic_set_on_recv(Eina_Debug_Session *session)
    session->magic_on_recv = EINA_TRUE;
 }
 
+EAPI Eina_Debug_Session_Type
+eina_debug_session_type_get(const Eina_Debug_Session *session)
+{
+   return session ? session->type : EINA_DEBUG_SESSION_SLAVE;
+}
+
 Eina_Bool
 eina_debug_init(void)
 {
@@ -1327,8 +1379,11 @@ eina_debug_init(void)
    // if someone uses the EFL_NODEBUG env var - do not do debugging. handy
    // for when this debug code is buggy itself
    if (getenv("EFL_NODEBUG")) return EINA_TRUE;
-   main_session = eina_debug_session_new();
-   eina_debug_local_connect(main_session);
+   if (!_default_connection_disabled)
+     {
+        main_session = eina_debug_session_new();
+        eina_debug_local_connect(main_session, EINA_DEBUG_SESSION_SLAVE);
+     }
    return EINA_TRUE;
 }
 
