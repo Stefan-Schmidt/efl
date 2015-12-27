@@ -146,9 +146,20 @@ _client_data(Eina_Debug_Session *session, void *buffer)
              Client *src = _client_find_by_session(session);
              if (src)
                {
-                  char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
-                  int size = hdr->size + sizeof(int) - sizeof(Eina_Debug_Packet_Header);
-                  eina_debug_session_send(dest->session, src->cid, hdr->opcode, data_buf, size);
+                  if (eina_debug_session_type_get(session) == eina_debug_session_type_get(dest->session))
+                    {
+                       /*
+                        * Packets Master -> Master or Slave -> Slave are forbidden
+                        * Only Master <-> Slave packets are allowed.
+                        */
+                       printf("Packet from %d to %d: denied (same type)\n", hdr->cid, dest->cid);
+                    }
+                  else
+                    {
+                       char *data_buf = ((char *)buffer) + sizeof(Eina_Debug_Packet_Header);
+                       int size = hdr->size + sizeof(int) - sizeof(Eina_Debug_Packet_Header);
+                       eina_debug_session_send(dest->session, src->cid, hdr->opcode, data_buf, size);
+                    }
                }
              else printf("Client %d not found\n", hdr->cid);
           }
