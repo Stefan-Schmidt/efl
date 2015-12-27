@@ -328,6 +328,14 @@ main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
    eina_init();
    ecore_init();
 
+   struct sigaction sa;
+   sa.sa_handler = SIG_IGN;
+   sigemptyset(&sa.sa_mask);
+   sa.sa_flags = 0;
+   if (sigaction(SIGPIPE, &sa, 0) == -1) {
+        perror(0);
+        exit(1);
+   }
    eina_debug_session_global_use(_client_data);
    if (!eina_debug_server_launch(NULL, _client_del))
      {
