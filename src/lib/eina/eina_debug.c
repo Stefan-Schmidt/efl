@@ -1084,6 +1084,12 @@ _signal_init(void)
    sigemptyset(&sa.sa_mask);
    if (sigaction(SIG, &sa, NULL) != 0)
      fprintf(stderr, "EINA DEBUG ERROR: Can't set up sig %i handler!\n", SIG);
+
+   sa.sa_sigaction = NULL;
+   sa.sa_handler = SIG_IGN;
+   sigemptyset(&sa.sa_mask);
+   sa.sa_flags = 0;
+   if (sigaction(SIGPIPE, &sa, 0) == -1) perror(0);
 }
 
 static void
