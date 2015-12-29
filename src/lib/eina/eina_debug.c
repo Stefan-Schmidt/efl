@@ -86,7 +86,7 @@ static struct timespec    *_bt_ts;
 static int                *_bt_cpu;
 
 /* Local session */
-static Eina_Debug_Session *main_session = NULL;
+static Eina_Debug_Session *_default_session = NULL;
 static Eina_Bool _default_connection_disabled = EINA_FALSE;
 /* List of existing sessions */
 static Eina_List *sessions = NULL;
@@ -153,7 +153,7 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
    unsigned char *buf = NULL;
    int nb = -1;
 
-   if(!session) session = main_session;
+   if(!session) session = _default_session;
 
    if (!session) return -1;
    // send protocol packet. all protocol is an int for size of packet then
@@ -429,7 +429,7 @@ eina_debug_session_free(Eina_Debug_Session *session)
 EAPI void
 eina_debug_session_dispatch_override(Eina_Debug_Session *session, Eina_Debug_Dispatch_Cb disp_cb)
 {
-   if (!session) session = main_session;
+   if (!session) session = _default_session;
    if (!session) return;
    if (!disp_cb) disp_cb = eina_debug_dispatch;
    session->dispatch_cb = disp_cb;
@@ -783,7 +783,7 @@ _opcodes_registration_send(Eina_Debug_Session *session,
    int count = 0;
    int size = sizeof(uint64_t);
 
-   if(!session) session = main_session;
+   if(!session) session = _default_session;
    if(!session) return;
 
    while(info->ops[count].opcode_name)
@@ -1258,7 +1258,7 @@ eina_debug_opcodes_register(Eina_Debug_Session *session, const Eina_Debug_Opcode
       Eina_Debug_Opcode_Status_Cb status_cb)
 {
    Eina_Debug_Session *opcodes_session = session;
-   if(!opcodes_session) opcodes_session = main_session;
+   if(!opcodes_session) opcodes_session = _default_session;
    if(_global_session) opcodes_session = _global_session;
    if(!opcodes_session) return;
 
@@ -1433,8 +1433,8 @@ eina_debug_init(void)
    if (getenv("EFL_NODEBUG")) return EINA_TRUE;
    if (!_default_connection_disabled)
      {
-        main_session = eina_debug_session_new();
-        eina_debug_local_connect(main_session, EINA_DEBUG_SESSION_SLAVE);
+        _default_session = eina_debug_session_new();
+        eina_debug_local_connect(_default_session, EINA_DEBUG_SESSION_SLAVE);
      }
    return EINA_TRUE;
 }
