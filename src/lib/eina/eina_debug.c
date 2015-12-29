@@ -150,6 +150,8 @@ EAPI int
 eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *data, int size)
 {
    int total_size = 0;
+   unsigned char *buf = NULL;
+   int nb = -1;
 
    if(!session) session = main_session;
 
@@ -159,7 +161,7 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
    // (all opcodes are 4 bytes as a string of 4 chars), then the real
    // message payload as a data blob after that
    total_size = size + sizeof(Eina_Debug_Packet_Header);
-   unsigned char *buf = alloca(total_size);
+   buf = alloca(total_size);
    Eina_Debug_Packet_Header *hdr = (Eina_Debug_Packet_Header *)buf;
    hdr->size = total_size - sizeof(int);
    hdr->opcode = op;
@@ -175,12 +177,10 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
      }
 #ifndef _WIN32
    if (session->magic_on_send) write(session->fd_out, magic, 4);
-   int nb = write(session->fd_out, buf, total_size);
+   nb = write(session->fd_out, buf, total_size);
    if (session->encode_cb) free(buf);
-   return nb;
-#else
-   return -1;
 #endif
+   return nb;
 }
 
 static void
@@ -242,6 +242,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
    int size_sz = sizeof(int);
    unsigned char *buf = NULL;
    int rret;
+   int recv_size = 0;
 
    if (!session) return -1;
 
@@ -279,7 +280,6 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         while (i < 4);
         printf("Magic found\n");
      }
-   int recv_size = 0;
    ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
    size_sz *= ratio;
    buf = malloc(size_sz);
@@ -465,14 +465,16 @@ _session_find_by_fd(int fd)
 EAPI void
 eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
 {
-   if (!session) return;
-   session->fd_out = session->fd_in = fd;
-
 #ifndef _WIN32
    struct epoll_event event;
+   int ret;
+#endif
+   if (!session) return;
+   session->fd_out = session->fd_in = fd;
+#ifndef _WIN32
    event.data.fd = fd;
    event.events = EPOLLIN ;
-   int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, fd, &event);
+   ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, fd, &event);
    if (ret) perror ("epoll_ctl/add");
 #endif
 }
@@ -698,9 +700,9 @@ static Eina_Bool
 _module_init_cb(Eina_Debug_Session *session, int cid, void *buffer, int size)
 {
    _module_info minfo;
-   if (size <= 0) return EINA_FALSE;
-   const char *module_name = buffer;
    char module_path[1024];
+   const char *module_name = buffer;
+   if (size <= 0) return EINA_FALSE;
    printf("Init module %s\n", module_name);
    sprintf(module_path, PACKAGE_LIB_DIR "/lib%s_debug"LIBEXT, module_name);
    minfo.handle = eina_module_new(module_path);
@@ -749,6 +751,8 @@ static Eina_Bool
 _callbacks_register_cb(Eina_Debug_Session *session, int src_id EINA_UNUSED, void *buffer, int size)
 {
    _opcode_reply_info *info = NULL;
+   int *os;
+   unsigned int count, i;
 
    uint64_t info_64;
    memcpy(&info_64, buffer, sizeof(uint64_t));
@@ -756,8 +760,8 @@ _callbacks_register_cb(Eina_Debug_Session *session, int src_id EINA_UNUSED, void
 
    if (!info) return EINA_FALSE;
 
-   int *os = (int *)((unsigned char *)buffer + sizeof(uint64_t));
-   unsigned int count = (size - sizeof(uint64_t)) / sizeof(int), i;
+   os = (int *)((unsigned char *)buffer + sizeof(uint64_t));
+   count = (size - sizeof(uint64_t)) / sizeof(int);
 
    for (i = 0; i < count; i++)
      {
@@ -824,12 +828,13 @@ _opcodes_register_all(Eina_Debug_Session *session)
 static void
 _opcodes_unregister_all(Eina_Debug_Session *session)
 {
-   free(session->cbs);
-   session->cbs_length = 0;
-   session->cbs = NULL;
-
    Eina_List *l;
    _opcode_reply_info *info = NULL;
+
+   if (!session) return;
+   session->cbs_length = 0;
+   free(session->cbs);
+   session->cbs = NULL;
 
    EINA_LIST_FOREACH(session->opcode_reply_infos, l, info)
      {
@@ -1385,6 +1390,10 @@ eina_debug_session_type_get(const Eina_Debug_Session *session)
    return session ? session->type : EINA_DEBUG_SESSION_SLAVE;
 }
 
+#ifdef __linux__
+   extern char *__progname;
+#endif
+
 Eina_Bool
 eina_debug_init(void)
 {
@@ -1403,7 +1412,6 @@ eina_debug_init(void)
    eina_mempool_init();
    eina_list_init();
 #ifdef __linux__
-   extern char *__progname;
    _my_app_name = __progname;
 #endif
    // For Windows support GetModuleFileName can be used
