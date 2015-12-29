@@ -91,7 +91,9 @@ static Eina_Bool _default_connection_disabled = EINA_FALSE;
 /* List of existing sessions */
 static Eina_List *sessions = NULL;
 /* epoll stuff */
+#ifndef _WIN32
 static int _epfd = -1, _listening_master_fd = -1, _listening_slave_fd = -1;
+#endif
 
 /* Used by the daemon to be notified about connections changes */
 static Eina_Debug_Connect_Cb _server_conn_cb = NULL;
@@ -109,7 +111,9 @@ static unsigned int poll_time = 0;
 static Eina_Debug_Timer_Cb poll_timer_cb = NULL;
 
 /* Magic number used in special cases for reliability */
+#ifndef _WIN32
 static char magic[4] = { 0xDE, 0xAD, 0xBE, 0xEF };
+#endif
 
 typedef struct
 {
@@ -169,10 +173,14 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
         buf = new_buf;
         total_size = new_size;
      }
+#ifndef _WIN32
    if (session->magic_on_send) write(session->fd_out, magic, 4);
    int nb = write(session->fd_out, buf, total_size);
    if (session->encode_cb) free(buf);
    return nb;
+#else
+   return -1;
+#endif
 }
 
 static void
@@ -194,6 +202,7 @@ _eina_debug_monitor_service_greet(Eina_Debug_Session *session)
    eina_debug_session_send(session, 0, EINA_DEBUG_OPCODE_HELLO, buf, size);
 }
 
+#ifndef _WIN32
 /*
  * Used to consume a script line.
  * WAIT token is used to wait for input after a script line has been
@@ -368,6 +377,7 @@ error:
 
    return -1;
 }
+#endif
 
 EAPI void
 eina_debug_default_connection_disable()
@@ -431,8 +441,10 @@ _sessions_free(void)
    while (sessions)
      {
         Eina_Debug_Session *session = eina_list_data_get(sessions);
+#ifndef _WIN32
         if (session->fd_in != session->fd_out) close(session->fd_out);
         close(session->fd_in);
+#endif
         eina_debug_session_free(session);
      }
 }
@@ -456,11 +468,13 @@ eina_debug_session_fd_attach(Eina_Debug_Session *session, int fd)
    if (!session) return;
    session->fd_out = session->fd_in = fd;
 
+#ifndef _WIN32
    struct epoll_event event;
    event.data.fd = fd;
    event.events = EPOLLIN ;
    int ret = epoll_ctl (_epfd, EPOLL_CTL_ADD, fd, &event);
    if (ret) perror ("epoll_ctl/add");
+#endif
 }
 
 EAPI void
@@ -473,10 +487,14 @@ eina_debug_session_fd_out_set(Eina_Debug_Session *session, int fd)
 static void
 _session_fd_unattach(Eina_Debug_Session *session)
 {
+#ifndef _WIN32
    int ret = epoll_ctl (_epfd, EPOLL_CTL_DEL, session->fd_in, NULL);
    if (ret) perror ("epoll_ctl/del");
    close(session->fd_in);
    if (session->fd_in != session->fd_out) close(session->fd_out);
+#else
+   (void) session;
+#endif
 }
 
 // a backtracer that uses libunwind to do the job
@@ -840,15 +858,19 @@ _socket_home_get()
 #define SERVER_MASTER_PORT 0
 #define SERVER_SLAVE_PORT 1
 
+#ifndef _WIN32
 #define LENGTH_OF_SOCKADDR_UN(s) \
    (strlen((s)->sun_path) + (size_t)(((struct sockaddr_un *)NULL)->sun_path))
+#endif
 
 EAPI Eina_Bool
 eina_debug_local_connect(Eina_Debug_Session *session, Eina_Debug_Session_Type type)
 {
+#ifndef _WIN32
    char buf[4096];
    int fd, socket_unix_len, curstate = 0;
    struct sockaddr_un socket_unix;
+#endif
 
    if (!session) return EINA_FALSE;
    // try this socket file - it will likely be:
@@ -857,6 +879,7 @@ eina_debug_local_connect(Eina_Debug_Session *session, Eina_Debug_Session_Type ty
    //   /var/run/UID/.ecore/efl_debug/0
    // either way a 4k buffer should be ebough ( if it's not we're on an
    // insane system)
+#ifndef _WIN32
    snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME,
          type == EINA_DEBUG_SESSION_MASTER ? SERVER_MASTER_PORT : SERVER_SLAVE_PORT);
    // create the socket
@@ -886,12 +909,17 @@ err:
    // some kind of connection failure here, so close a valid socket and
    // get out of here
    if (fd >= 0) close(fd);
+#else
+   (void) session;
+   (void) type;
+#endif
    return EINA_FALSE;
 }
 
 EAPI Eina_Bool
 eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Eina_List *script)
 {
+#ifndef _WIN32
    int pipeToShell[2], pipeFromShell[2];
    int pid = -1;
    pipe(pipeToShell);
@@ -938,8 +966,15 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
         _thread_start();
      }
    return EINA_TRUE;
+#else
+   (void) session;
+   (void) cmd;
+   (void) script;
+   return EINA_FALSE;
+#endif
 }
 
+#ifndef _WIN32
 static int
 _local_listening_socket_create(const char *path)
 {
@@ -970,10 +1005,12 @@ err:
    if (fd >= 0) close(fd);
    return -1;
 }
+#endif
 
 EAPI Eina_Bool
 eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb disc_cb)
 {
+#ifndef _WIN32
    char buf[4096];
    struct epoll_event event = {0};
    mode_t mask = 0;
@@ -1004,18 +1041,21 @@ eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb
    event.events = EPOLLIN;
    epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_slave_fd, &event);
    umask(mask);
+#endif
 
    _server_conn_cb = conn_cb;
    _server_disc_cb = disc_cb;
    // start the monitor thread
    _thread_start();
    return EINA_TRUE;
+#ifndef _WIN32
 err:
    if (mask) umask(mask);
    if (_listening_master_fd >= 0) close(_listening_master_fd);
    _listening_master_fd = -1;
    if (_listening_slave_fd >= 0) close(_listening_slave_fd);
    _listening_slave_fd = -1;
+#endif
    return EINA_FALSE;
 }
 
@@ -1057,6 +1097,7 @@ _session_disconnect(Eina_Debug_Session *session)
 static void *
 _monitor(void *_data EINA_UNUSED)
 {
+#ifndef _WIN32
    int ret;
    struct epoll_event events[MAX_EVENTS];
 
@@ -1161,6 +1202,7 @@ _monitor(void *_data EINA_UNUSED)
                 if (!poll_timer_cb()) poll_time = 0;
              }
      }
+#endif
    // free sessions and close fd's
    _sessions_free();
    return NULL;
@@ -1371,7 +1413,9 @@ eina_debug_init(void)
    eina_semaphore_new(&_eina_debug_monitor_return_sem, 0);
    self = pthread_self();
    _eina_debug_thread_mainloop_set(&self);
+#ifndef _WIN32
    _epfd = epoll_create (MAX_EVENTS);
+#endif
 #if defined(HAVE_GETUID) && defined(HAVE_GETEUID)
    // if we are setuid - don't debug!
    if (getuid() != geteuid()) return EINA_TRUE;
