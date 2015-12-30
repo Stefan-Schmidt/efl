@@ -368,6 +368,7 @@ error:
       e_debug("EINA DEBUG ERROR: "
             "Invalid size read %i != %i", rret, size_sz);
 
+   if (buf) free(buf);
    return -1;
 }
 #endif
@@ -891,7 +892,7 @@ eina_debug_local_connect(Eina_Debug_Session *session, Eina_Debug_Session_Type ty
      goto err;
    // sa that it's a unix socket and where the path is
    socket_unix.sun_family = AF_UNIX;
-   strncpy(socket_unix.sun_path, buf, sizeof(socket_unix.sun_path));
+   strncpy(socket_unix.sun_path, buf, sizeof(socket_unix.sun_path) - 1);
    socket_unix_len = LENGTH_OF_SOCKADDR_UN(&socket_unix);
    // actually conenct to efl_debugd service
    if (connect(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
@@ -956,7 +957,7 @@ eina_debug_shell_remote_connect(Eina_Debug_Session *session, const char *cmd, Ei
         /* Parent */
         eina_debug_session_fd_attach(session, pipeFromShell[0]);
         eina_debug_session_magic_set_on_recv(session);
-        fcntl(session->fd_in, F_SETFL, O_NONBLOCK);
+        if (fcntl(session->fd_in, F_SETFL, O_NONBLOCK) == -1) perror(0);
         session->fd_out = pipeToShell[1];
         session->script = script;
         _script_consume(session);
@@ -977,9 +978,9 @@ static int
 _local_listening_socket_create(const char *path)
 {
    struct sockaddr_un socket_unix;
-   int fd, socket_unix_len, curstate = 0;
+   int socket_unix_len, curstate = 0;
    // create the socket
-   fd = socket(AF_UNIX, SOCK_STREAM, 0);
+   int fd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (fd < 0) goto err;
    // set the socket to close when we exec things so they don't inherit it
    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) goto err;
@@ -989,7 +990,7 @@ _local_listening_socket_create(const char *path)
      goto err;
    // sa that it's a unix socket and where the path is
    socket_unix.sun_family = AF_UNIX;
-   strncpy(socket_unix.sun_path, path, sizeof(socket_unix.sun_path));
+   strncpy(socket_unix.sun_path, path, sizeof(socket_unix.sun_path) - 1);
    socket_unix_len = LENGTH_OF_SOCKADDR_UN(&socket_unix);
    unlink(socket_unix.sun_path);
    if (bind(fd, (struct sockaddr *)&socket_unix, socket_unix_len) < 0)
@@ -1012,27 +1013,31 @@ eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb
    char buf[4096];
    struct epoll_event event = {0};
    mode_t mask = 0;
+   const char *socket_home_path = _socket_home_get();
+   char *socket_path = NULL;
+   if (!socket_home_path) return EINA_FALSE;
+   socket_path = strdup(socket_home_path);
 
-   snprintf(buf, sizeof(buf), "%s/%s", _socket_home_get(), SERVER_PATH);
+   snprintf(buf, sizeof(buf), "%s/%s", socket_path, SERVER_PATH);
    if (mkdir(buf, S_IRWXU) < 0 && errno != EEXIST)
      {
         perror("mkdir SERVER_PATH");
         goto err;
      }
-   snprintf(buf, sizeof(buf), "%s/%s/%s", _socket_home_get(), SERVER_PATH, SERVER_NAME);
+   snprintf(buf, sizeof(buf), "%s/%s/%s", socket_path, SERVER_PATH, SERVER_NAME);
    if (mkdir(buf, S_IRWXU) < 0 && errno != EEXIST)
      {
         perror("mkdir SERVER_NAME");
         goto err;
      }
    mask = umask(S_IRWXG | S_IRWXO);
-   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_MASTER_PORT);
+   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", socket_path, SERVER_PATH, SERVER_NAME, SERVER_MASTER_PORT);
    _listening_master_fd = _local_listening_socket_create(buf);
    if (_listening_master_fd <= 0) goto err;
    event.data.fd = _listening_master_fd;
    event.events = EPOLLIN;
    epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_master_fd, &event);
-   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_SLAVE_PORT);
+   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", socket_path, SERVER_PATH, SERVER_NAME, SERVER_SLAVE_PORT);
    _listening_slave_fd = _local_listening_socket_create(buf);
    if (_listening_slave_fd <= 0) goto err;
    event.data.fd = _listening_slave_fd;
@@ -1054,6 +1059,7 @@ err:
    if (_listening_slave_fd >= 0) close(_listening_slave_fd);
    _listening_slave_fd = -1;
 #endif
+   free(socket_path);
    return EINA_FALSE;
 }
 
@@ -1141,7 +1147,7 @@ _monitor(void *_data EINA_UNUSED)
                        if(events[i].data.fd == _listening_master_fd)
                          {
                             int new_fd = accept(_listening_master_fd, NULL, NULL);
-                            if (new_fd <= 0) perror("Accept");
+                            if (new_fd < 0) perror("Accept");
                             else
                               {
                                  Eina_Debug_Session *new_fd_session = eina_debug_session_new();
@@ -1156,7 +1162,7 @@ _monitor(void *_data EINA_UNUSED)
                        if(events[i].data.fd == _listening_slave_fd)
                          {
                             int new_fd = accept(_listening_slave_fd, NULL, NULL);
-                            if (new_fd <= 0) perror("Accept");
+                            if (new_fd < 0) perror("Accept");
                             else
                               {
                                  Eina_Debug_Session *new_fd_session = eina_debug_session_new();

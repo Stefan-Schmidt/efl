@@ -67,15 +67,16 @@ _evlog_get_cb(Eina_Debug_Session *session EINA_UNUSED, int src EINA_UNUSED, void
              header[0] = 0xffee211;
              header[1] = blocksize;
              header[2] = *overflow;
-             fwrite(header, 12, 1, _evlog_file);
-             fwrite(p, blocksize, 1, _evlog_file);
+             if (fwrite(header, 12, 1, _evlog_file) < 12 ||
+                   fwrite(p, blocksize, 1, _evlog_file) < blocksize)
+                printf("Error writing bytes to evlog file\n");
           }
      }
 
    if(received_times == _evlog_max_times)
      {
         printf("Received last evlog response\n");
-        fclose(_evlog_file);
+        if (_evlog_file) fclose(_evlog_file);
         _evlog_file = NULL;
         ecore_main_loop_quit();
      }
@@ -113,9 +114,7 @@ _cid_get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *
    if ((!strcmp(op_str, "pon")) && (3 <= (my_argc - 1)))
      {
         int freq = atoi(my_argv[3]);
-        char *buf = malloc(sizeof(int));
-        memcpy(buf, &freq, sizeof(int));
-        eina_debug_session_send(_session, _cid, _prof_on_opcode, buf, sizeof(int));
+        eina_debug_session_send(_session, _cid, _prof_on_opcode, &freq, sizeof(int));
      }
    else if (!strcmp(op_str, "poff"))
       eina_debug_session_send(_session, _cid, _prof_off_opcode,  NULL, 0);

@@ -45,7 +45,7 @@ _eina_debug_thread_add(void *th)
      {
         pthread_t *threads = realloc
           (_eina_debug_thread_active,
-           ((_eina_debug_thread_active_num + 16) * 2) * sizeof(pthread_t *));
+           ((_eina_debug_thread_active_num + 16) * 2) * sizeof(pthread_t));
         if (threads)
           {
              _eina_debug_thread_active = threads;

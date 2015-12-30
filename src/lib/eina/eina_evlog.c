@@ -238,8 +238,8 @@ _get_cb(Eina_Debug_Session *session EINA_UNUSED, int cid EINA_UNUSED, void *buff
      {
         resp_size = evlog->top + sizeof(evlog->overflow);
         resp_buf = alloca(resp_size);
-        memcpy(buf, &(evlog->overflow), sizeof(evlog->overflow));
-        memcpy(buf + sizeof(evlog->overflow), evlog->buf, evlog->top);
+        memcpy(resp_buf, &(evlog->overflow), sizeof(evlog->overflow));
+        memcpy(resp_buf + sizeof(evlog->overflow), evlog->buf, evlog->top);
      }
    printf("send evlog size %d\n", resp_size);
    eina_debug_session_send(session, cid, _evlog_get_opcode, resp_buf, resp_size);
