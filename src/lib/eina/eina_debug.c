@@ -54,6 +54,13 @@
 # define LIBEXT ".so"
 #endif
 
+#define DEBUGON 1
+#ifdef DEBUGON
+# define e_debug(fmt, args...) fprintf(stderr, __FILE__":%s/%d : " fmt "\n", __FUNCTION__, __LINE__, ##args)
+#else
+# define e_debug(x...) do { } while (0)
+#endif
+
 // yes - a global debug spinlock. i expect contention to be low for now, and
 // when needed we can split this up into mroe locks to reduce contention when
 // and if that day comes
@@ -167,7 +174,7 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
    hdr->opcode = op;
    hdr->cid = dest;
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
-   //fprintf(stderr, "%s:%d - %d\n", __FUNCTION__, session->fd_out, hdr->size + sizeof(int));
+   e_debug("%d - %ld", session->fd_out, hdr->size + sizeof(int));
    if (session->encode_cb)
      {
         int new_size = 0;
@@ -250,8 +257,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
      {
         /* Wait for input */
         char c;
-        while (read(session->fd_in, &c, 1) == 1) printf("%c", c);
-        printf("\n");
+        while (read(session->fd_in, &c, 1) == 1);
         session->wait_for_input = EINA_FALSE;
         _script_consume(session);
         return 0;
@@ -265,20 +271,12 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
         do
           {
              ret = read(session->fd_in, &c, 1);
-             if (ret != 1)
-               {
-                  printf("\n");
-                  return 0;
-               }
+             if (ret != 1) return 0;
              if (c == magic[i]) i++;
-             else
-               {
-                  printf("%c", c);
-                  i = 0;
-               }
+             else i = 0;
           }
         while (i < 4);
-        printf("Magic found\n");
+        e_debug("Magic found");
      }
    ratio = session->decode_cb && session->encoding_ratio ? session->encoding_ratio : 1.0;
    size_sz *= ratio;
@@ -296,7 +294,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
      }
    while (recv_size != size_sz);
 
-   //fprintf(stderr, "%s1:%d - %d\n", __FUNCTION__, session->fd_in, rret);
+   e_debug("%d - %d", session->fd_in, rret);
    if (rret == size_sz)
      {
         int size = 0;
@@ -308,8 +306,7 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
              free(size_buf);
           }
         else size = *(int *)buf;
-        fprintf(stdout, "%s2:%d/%d - %d\n", __FUNCTION__, getpid(), session->fd_in, size);
-        fflush(stdout);
+        e_debug("%d/%d - %d", getpid(), session->fd_in, size);
         // allocate a buffer for real payload + header - size variable size
         buf = realloc(buf, (size + sizeof(int)) * ratio);
         if (buf)
@@ -320,7 +317,6 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
                {
                   while ((rret = read(session->fd_in, buf + size_sz + recv_size, (size * ratio) - recv_size)) == -1 &&
                         errno == EAGAIN);
-                  //fprintf(stderr, "%s3:%d - %d\n", __FUNCTION__, session->fd_in, rret);
                   if (rret <= 0)
                     {
                        free(buf);
@@ -332,9 +328,8 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
                {
                   // we didn't get payload as expected - error on
                   // comms
-                  fprintf(stderr,
-                        "EINA DEBUG ERROR: "
-                        "Invalid payload+header size: read %i expected %i\n", recv_size, (int)(size * ratio));
+                  e_debug("EINA DEBUG ERROR: "
+                        "Invalid payload+header size: read %i expected %i", recv_size, (int)(size * ratio));
                   free(buf);
                   return -1;
                }
@@ -362,18 +357,16 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
           {
              // we couldn't allocate memory for payloa buffer
              // internal memory limit error
-             fprintf(stderr,
-                   "EINA DEBUG ERROR: "
-                   "Cannot allocate %u bytes for op\n", (unsigned int)size);
+             e_debug("EINA DEBUG ERROR: "
+                   "Cannot allocate %u bytes for op", (unsigned int)size);
              return -1;
           }
      }
 error:
    if (rret == -1) perror("Read from socket");
    if (rret)
-      fprintf(stderr,
-            "EINA DEBUG ERROR: "
-            "Invalid size read %i != %i\n", rret, size_sz);
+      e_debug("EINA DEBUG ERROR: "
+            "Invalid size read %i != %i", rret, size_sz);
 
    return -1;
 }
@@ -548,7 +541,7 @@ _eina_debug_signal(int sig EINA_UNUSED,
                }
           }
         // we couldn't find out thread reference! help!
-        fprintf(stderr, "EINA DEBUG ERROR: can't find thread slot!\n");
+        e_debug("EINA DEBUG ERROR: can't find thread slot!");
         eina_semaphore_release(&_eina_debug_monitor_return_sem, 1);
         return;
      }
@@ -646,7 +639,7 @@ err:
      {
         double t;
         t = get_time();
-        fprintf(stderr, "%1.5f bt's per sec\n", (double)bts / (t - _trace_t0));
+        e_debug("%1.5f bt's per sec", (double)bts / (t - _trace_t0));
         _trace_t0 = t;
         bts = 0;
      }
@@ -688,7 +681,7 @@ typedef struct {
         (cls_struct).sym = eina_module_symbol_get((cls_struct).handle, func_name); \
         if (!(cls_struct).sym) \
           { \
-             printf("Failed loading symbol '%s' from the library.\n", func_name); \
+             e_debug("Failed loading symbol '%s' from the library.", func_name); \
              eina_module_free((cls_struct).handle); \
              (cls_struct).handle = NULL; \
              return EINA_FALSE; \
@@ -703,12 +696,12 @@ _module_init_cb(Eina_Debug_Session *session, int cid, void *buffer, int size)
    char module_path[1024];
    const char *module_name = buffer;
    if (size <= 0) return EINA_FALSE;
-   printf("Init module %s\n", module_name);
+   e_debug("Init module %s", module_name);
    sprintf(module_path, PACKAGE_LIB_DIR "/lib%s_debug"LIBEXT, module_name);
    minfo.handle = eina_module_new(module_path);
    if (!minfo.handle || !eina_module_load(minfo.handle))
      {
-        printf("Failed loading debug module %s.\n", module_name);
+        e_debug("Failed loading debug module %s.", module_name);
         if (minfo.handle) eina_module_free(minfo.handle);
         minfo.handle = NULL;
         return EINA_TRUE;
@@ -767,7 +760,7 @@ _callbacks_register_cb(Eina_Debug_Session *session, int src_id EINA_UNUSED, void
      {
         if (info->ops[i].opcode_id) *(info->ops[i].opcode_id) = os[i];
         eina_debug_static_opcode_register(session, os[i], info->ops[i].cb);
-        printf("Opcode %s -> %d\n", info->ops[i].opcode_name, os[i]);
+        e_debug("Opcode %s -> %d", info->ops[i].opcode_name, os[i]);
      }
    if (info->status_cb) info->status_cb(EINA_TRUE);
 
@@ -1083,7 +1076,7 @@ _signal_init(void)
    sa.sa_flags = SA_RESTART | SA_SIGINFO;
    sigemptyset(&sa.sa_mask);
    if (sigaction(SIG, &sa, NULL) != 0)
-     fprintf(stderr, "EINA DEBUG ERROR: Can't set up sig %i handler!\n", SIG);
+     e_debug("EINA DEBUG ERROR: Can't set up sig %i handler!", SIG);
 
    sa.sa_sigaction = NULL;
    sa.sa_handler = SIG_IGN;
@@ -1186,9 +1179,7 @@ _monitor(void *_data EINA_UNUSED)
                                   if(!_disp_session->dispatch_cb(session, buffer))
                                     {
                                        // something we don't understand
-                                       fprintf(stderr,
-                                             "EINA DEBUG ERROR: "
-                                             "Unknown command\n");
+                                       e_debug("EINA DEBUG ERROR: Unknown command");
                                     }
                                }
                              else if (size == 0)
@@ -1231,7 +1222,7 @@ _thread_start()
    err = pthread_create(&_monitor_thread, NULL, _monitor, NULL);
    if (err != 0)
      {
-        fprintf(stderr, "EINA DEBUG ERROR: Can't create debug thread!\n");
+        e_debug("EINA DEBUG ERROR: Can't create debug thread!");
         abort();
      }
    else _monitor_thread_runs = EINA_TRUE;
@@ -1298,7 +1289,7 @@ eina_debug_dispatch(Eina_Debug_Session *session, void *buffer)
         free(buffer);
         return EINA_TRUE;
      }
-   else fprintf(stderr, "Invalid opcode %d\n", opcode);
+   else e_debug("Invalid opcode %d", opcode);
    free(buffer);
    return EINA_FALSE;
 }
@@ -1372,7 +1363,7 @@ EAPI void eina_debug_session_basic_codec_add(Eina_Debug_Session *session, Eina_D
          eina_debug_session_codec_hooks_add(session, _shell_encode_cb, _shell_decode_cb, 2.0);
          break;
       default:
-         fprintf(stderr, "EINA DEBUG ERROR: Bad basic encoding\n");
+         e_debug("EINA DEBUG ERROR: Bad basic encoding");
      }
 }
 
