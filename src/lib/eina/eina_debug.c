@@ -677,7 +677,7 @@ typedef struct {
    do \
      { \
         char func_name[1024]; \
-        sprintf(func_name, "%s_debug_" #sym, pkg); \
+        snprintf(func_name, sizeof(func_name), "%s_debug_" #sym, pkg); \
         (cls_struct).sym = eina_module_symbol_get((cls_struct).handle, func_name); \
         if (!(cls_struct).sym) \
           { \
@@ -697,7 +697,7 @@ _module_init_cb(Eina_Debug_Session *session, int cid, void *buffer, int size)
    const char *module_name = buffer;
    if (size <= 0) return EINA_FALSE;
    e_debug("Init module %s", module_name);
-   sprintf(module_path, PACKAGE_LIB_DIR "/lib%s_debug"LIBEXT, module_name);
+   snprintf(module_path, sizeof(module_path), PACKAGE_LIB_DIR "/lib%s_debug"LIBEXT, module_name);
    minfo.handle = eina_module_new(module_path);
    if (!minfo.handle || !eina_module_load(minfo.handle))
      {
@@ -1013,26 +1013,26 @@ eina_debug_server_launch(Eina_Debug_Connect_Cb conn_cb, Eina_Debug_Disconnect_Cb
    struct epoll_event event = {0};
    mode_t mask = 0;
 
-   sprintf(buf, "%s/%s", _socket_home_get(), SERVER_PATH);
+   snprintf(buf, sizeof(buf), "%s/%s", _socket_home_get(), SERVER_PATH);
    if (mkdir(buf, S_IRWXU) < 0 && errno != EEXIST)
      {
         perror("mkdir SERVER_PATH");
         goto err;
      }
-   sprintf(buf, "%s/%s/%s", _socket_home_get(), SERVER_PATH, SERVER_NAME);
+   snprintf(buf, sizeof(buf), "%s/%s/%s", _socket_home_get(), SERVER_PATH, SERVER_NAME);
    if (mkdir(buf, S_IRWXU) < 0 && errno != EEXIST)
      {
         perror("mkdir SERVER_NAME");
         goto err;
      }
    mask = umask(S_IRWXG | S_IRWXO);
-   sprintf(buf, "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_MASTER_PORT);
+   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_MASTER_PORT);
    _listening_master_fd = _local_listening_socket_create(buf);
    if (_listening_master_fd <= 0) goto err;
    event.data.fd = _listening_master_fd;
    event.events = EPOLLIN;
    epoll_ctl (_epfd, EPOLL_CTL_ADD, _listening_master_fd, &event);
-   sprintf(buf, "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_SLAVE_PORT);
+   snprintf(buf, sizeof(buf), "%s/%s/%s/%i", _socket_home_get(), SERVER_PATH, SERVER_NAME, SERVER_SLAVE_PORT);
    _listening_slave_fd = _local_listening_socket_create(buf);
    if (_listening_slave_fd <= 0) goto err;
    event.data.fd = _listening_slave_fd;
