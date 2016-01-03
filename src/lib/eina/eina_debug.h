@@ -47,7 +47,10 @@ enum
 
 /**
  * @typedef Eina_Debug_Session
- * A session used to interact with the debug daemon
+ *
+ * A handle used to interact with the debug daemon.
+ * It contains all the information related to this connection and needed
+ * during send/receive/dispatch/...
  */
 typedef struct _Eina_Debug_Session Eina_Debug_Session;
 
@@ -58,7 +61,7 @@ typedef struct _Eina_Debug_Session Eina_Debug_Session;
  *
  * @param session the session
  * @param cid the source id
- * @param buffer the packet payload data
+ * @param buffer the packet payload data. It doesn't contain any transport information.
  * @param size the packet payload size
  */
 typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Session *session, int cid, void *buffer, int size);
@@ -66,7 +69,8 @@ typedef Eina_Bool (*Eina_Debug_Cb)(Eina_Debug_Session *session, int cid, void *b
 /**
  * @typedef Eina_Debug_Opcode_Status_Cb
  *
- * When the a connection or a disconnection is happening, this callback is invoked.
+ * When a connection or a disconnection is happening, this callback is invoked.
+ * It is needed to inform the upper layer the opcodes are valid/invalid.
  *
  * @param status EINA_TRUE if opcodes have been received from the daemon, EINA_FALSE otherwise.
  */
@@ -75,10 +79,13 @@ typedef void (*Eina_Debug_Opcode_Status_Cb)(Eina_Bool status);
 /**
  * @typedef Eina_Debug_Dispatch_Cb
  *
- * Dispatcher callback used to override the default dispatcher of a session
+ * Dispatcher callback prototype used to override the default dispatcher of a
+ * session.
  *
  * @param session the session
  * @param buffer the packet received
+ *
+ * The given packet is the entire data received, including the header.
  */
 typedef Eina_Bool (*Eina_Debug_Dispatch_Cb)(Eina_Debug_Session *session, void *buffer);
 
@@ -92,7 +99,8 @@ typedef Eina_Bool (*Eina_Debug_Timer_Cb)(void);
 /**
  * @typedef Eina_Debug_Connect_Cb
  *
- * Callback used to indicate a new connection
+ * Callback used to indicate a new connection.
+ * This is needed by the daemon to register this new connection.
  *
  * @param session the new session
  */
@@ -102,6 +110,7 @@ typedef void (*Eina_Debug_Connect_Cb)(Eina_Debug_Session *session);
  * @typedef Eina_Debug_Disconnect_Cb
  *
  * Callback used to indicate a disconnection
+ * This is needed by the daemon to unregister the lost connection.
  *
  * @param session the session
  */
@@ -141,7 +150,7 @@ typedef struct
    int size; /**< Packet size after this element */
    /**<
     * During sending, it corresponds to the id of the destination. During reception, it is the id of the source
-    * The daemon is in charge of swapping the id before forwarding to the destination.
+    * The daemon is in charge of swapping the id before forwarding the packet to the destination.
     */
    int cid;
    int opcode; /**< Opcode of the packet */
@@ -251,7 +260,7 @@ void _eina_debug_dump_fhandle_bt(FILE *f, void **bt, int btlen);
 /**
  * @brief Creates a new session
  *
- * @return the new session
+ * @return the new session handle
  */
 EAPI Eina_Debug_Session *eina_debug_session_new(void);
 
@@ -284,10 +293,10 @@ EAPI void eina_debug_session_fd_out_set(Eina_Debug_Session *session, int fd);
 /**
  * @brief Indicate we want to use a global session
  *
- * This is used in the daemon to store all the opcodes information into a same
+ * This is used by the daemon to store all the opcodes information into a same
  * data structure. In the meantime, we override the dispatcher of this global
- * session. When a packet arrives on a specific session, this dispatcher will
- * be used by default.
+ * session. When a packet arrives, this dispatcher will be used by default, no
+ * matter the session.
  *
  * @param disp_cb the dispatcher function to use for all the sessions
  */
