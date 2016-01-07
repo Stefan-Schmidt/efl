@@ -231,11 +231,18 @@ _script_consume(Eina_Debug_Session *session)
           {
              if (!strncmp(line, "WAIT", 4))
                {
+                  e_debug("Wait for input");
                   session->wait_for_input = EINA_TRUE;
                   return;
                }
+             else if (!strncmp(line, "SLEEP_1", 7))
+               {
+                  e_debug("Sleep 1s");
+                  sleep(1);
+               }
              else
                {
+                  e_debug("Apply script line: %s", line);
                   write(session->fd_out, line, strlen(line));
                   write(session->fd_out, "\n", 1);
                }
