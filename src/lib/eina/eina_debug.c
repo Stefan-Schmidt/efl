@@ -56,9 +56,15 @@
 
 #define DEBUGON 1
 #ifdef DEBUGON
-# define e_debug(fmt, args...) fprintf(stderr, __FILE__":%s/%d : " fmt "\n", __FUNCTION__, __LINE__, ##args)
+# define e_debug(fmt, args...) fprintf(stderr, "%d:"__FILE__":%s/%d : " fmt "\n", getpid(), __FUNCTION__, __LINE__, ##args)
+# define e_debug_begin(fmt, args...) fprintf(stderr, "%d:"__FILE__":%s/%d : " fmt "", getpid(), __FUNCTION__, __LINE__, ##args)
+# define e_debug_continue(fmt, args...) fprintf(stderr, fmt, ##args)
+# define e_debug_end() fprintf(stderr, "\n")
 #else
 # define e_debug(x...) do { } while (0)
+# define e_debug_begin(x...) do { } while (0)
+# define e_debug_continue(x...) do { } while (0)
+# define e_debug_end(x...) do { } while (0)
 #endif
 
 // yes - a global debug spinlock. i expect contention to be low for now, and
@@ -174,7 +180,6 @@ eina_debug_session_send(Eina_Debug_Session *session, int dest, int op, void *dat
    hdr->opcode = op;
    hdr->cid = dest;
    if (size > 0) memcpy(buf + sizeof(Eina_Debug_Packet_Header), data, size);
-   e_debug("%d - %ld", session->fd_out, hdr->size + sizeof(int));
    if (session->encode_cb)
      {
         int new_size = 0;
@@ -257,7 +262,9 @@ _eina_debug_session_receive(Eina_Debug_Session *session, unsigned char **buffer)
      {
         /* Wait for input */
         char c;
-        while (read(session->fd_in, &c, 1) == 1);
+        e_debug_begin("Characters received: ");
+        while (read(session->fd_in, &c, 1) == 1) e_debug_continue("%c", c);
+        e_debug_end();
         session->wait_for_input = EINA_FALSE;
         _script_consume(session);
         return 0;
