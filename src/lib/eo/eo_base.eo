@@ -289,8 +289,8 @@ abstract Eo.Base ()
         class.destructor;
    }
    events {
-      callback,add; [[A callback was added.]]
-      callback,del; [[A callback was deleted.]]
+/*      callback,add; [[A callback was added.]]
+      callback,del; [[A callback was deleted.]] */
       del; [[Obj is being deleted.]]
    }
 }

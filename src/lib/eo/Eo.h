@@ -1020,6 +1020,12 @@ EAPI const Eo_Event_Description *eo_base_legacy_only_event_description_get(const
    eo_event_callback_array_priority_add(array, \
          EO_CALLBACK_PRIORITY_DEFAULT, data)
 
+EOAPI extern const Eo_Event_Description _EO_BASE_EVENT_CALLBACK_ADD;
+EOAPI extern const Eo_Event_Description _EO_BASE_EVENT_CALLBACK_DEL;
+
+#define EO_BASE_EVENT_CALLBACK_ADD (&(_EO_BASE_EVENT_CALLBACK_ADD))
+#define EO_BASE_EVENT_CALLBACK_DEL (&(_EO_BASE_EVENT_CALLBACK_DEL))
+
 /**
  * @}
  */
@@ -1031,6 +1037,7 @@ EINA_DEPRECATED static inline const Eo_Event_Description* _EO_EV_DEL(void) { ret
 #define EO_EV_CALLBACK_ADD _EO_EV_CALLBACK_ADD()
 #define EO_EV_CALLBACK_DEL _EO_EV_CALLBACK_DEL()
 #define EO_EV_DEL _EO_EV_DEL()
+
 
 /**
  * @}

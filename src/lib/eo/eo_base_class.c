@@ -36,6 +36,11 @@ typedef struct
    void *data;
 } Eo_Generic_Data_Node;
 
+EOAPI const Eo_Event_Description _EO_BASE_EVENT_CALLBACK_ADD =
+   EO_EVENT_DESCRIPTION_HOT("callback,add");
+EOAPI const Eo_Event_Description _EO_BASE_EVENT_CALLBACK_DEL =
+   EO_EVENT_DESCRIPTION_HOT("callback,del");
+
 static void
 _eo_generic_data_node_free(Eo_Generic_Data_Node *node)
 {
