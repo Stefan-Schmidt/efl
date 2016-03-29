@@ -3973,6 +3973,126 @@ START_TEST(evas_textblock_hyphenation)
 END_TEST;
 #endif
 
+static void
+_test_check_annotation(Evas_Object *tb,
+      int start, int end, size_t len, const char **formats)
+{
+   Evas_Textblock_Annotation *an;
+   Eina_Iterator *it =
+      evas_object_textblock_annotation_range_get_all(tb, start, end);
+   size_t i = 0;
+   EINA_ITERATOR_FOREACH(it, an)
+     {
+        const char *fmt = evas_object_textblock_annotation_get(tb,
+              an);
+        ck_assert_msg((i < len),
+              "No formats to check but current annotation is: %s\n", fmt);
+        ck_assert_str_eq(fmt, *formats);
+        formats++;
+        i++;
+     }
+   ck_assert_msg((i == len),
+         "Expected next format (index %lu): %s, but reached end of annotations\n",
+         i, *formats);
+
+   eina_iterator_free(it);
+}
+
+#define _COMP_STR(...) ((const char *[]) { __VA_ARGS__ })
+#define _CREATE_PARAMS(X) (sizeof(X) / sizeof(X[0])), (X)
+#define _COMP_PARAMS(...) _CREATE_PARAMS(_COMP_STR(__VA_ARGS__))
+
+START_TEST(evas_textblock_annotation)
+{
+   START_TB_TEST();
+   Evas_Textblock_Annotation *an, *an2;
+   const char *buf =
+      "This text will check annotation."
+      " By \"annotating\" the text, we can apply formatting simply by"
+      " specifying a range (start, end) in the text, and the format we want"
+      " for it."
+      ;
+
+   evas_object_textblock_text_markup_set(tb, buf);
+
+   /* Check some trivial cases */
+   ck_assert(!evas_object_textblock_annotation_insert(tb, 0, 3, NULL));
+   ck_assert(!evas_object_textblock_annotation_insert(tb, 0, 3, ""));
+   ck_assert(!evas_object_textblock_annotation_insert(tb, 1, 0, "color=#fff"));
+
+   /* Insert and check correct positions */
+   _test_check_annotation(tb, 0, 10, _COMP_PARAMS());
+
+   evas_object_textblock_annotation_insert(tb, 0, 3, "font_weight=bold");
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_weight=bold"));
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_weight=bold"));
+   _test_check_annotation(tb, 4, 10, _COMP_PARAMS());
+
+   evas_object_textblock_annotation_insert(tb, 50, 60, "color=#0ff");
+   _test_check_annotation(tb, 0, 49, _COMP_PARAMS("font_weight=bold"));
+   _test_check_annotation(tb, 0, 51, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
+   _test_check_annotation(tb, 0, 59, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
+   _test_check_annotation(tb, 0, 60, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
+   _test_check_annotation(tb, 40, 50, _COMP_PARAMS("color=#0ff"));
+   _test_check_annotation(tb, 40, 51, _COMP_PARAMS("color=#0ff"));
+   _test_check_annotation(tb, 40, 61, _COMP_PARAMS("color=#0ff"));
+   _test_check_annotation(tb, 60, 61, _COMP_PARAMS("color=#0ff"));
+   _test_check_annotation(tb, 61, 62, _COMP_PARAMS());
+
+   /* See that annotation's positions are updated as text is inserted */
+   evas_object_textblock_text_markup_set(tb, "hello");
+   an = evas_object_textblock_annotation_insert(tb, 0, 2, "color=#fff");
+   _test_check_annotation(tb, 3, 3, _COMP_PARAMS());
+   evas_textblock_cursor_pos_set(cur, 0);
+   evas_textblock_cursor_text_append(cur, "a");
+   _test_check_annotation(tb, 3, 3, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 4, 4, _COMP_PARAMS());
+
+   /* Replace annotations's format */
+   evas_object_textblock_annotation_set(tb, an, "font_size=14");
+   _test_check_annotation(tb, 3, 3, _COMP_PARAMS("font_size=14"));
+   _test_check_annotation(tb, 4, 4, _COMP_PARAMS());
+
+   evas_object_textblock_text_markup_set(tb, "hello world");
+   an = evas_object_textblock_annotation_insert(tb, 0, 1, "color=#fff");
+   an2 = evas_object_textblock_annotation_insert(tb, 2, 3, "font_size=14");
+   _test_check_annotation(tb, 0, 1, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 2, 3, _COMP_PARAMS("font_size=14"));
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("color=#fff", "font_size=14"));
+   evas_object_textblock_annotation_set(tb, an, "font_size=10");
+   evas_object_textblock_annotation_set(tb, an2, "color=#000");
+   _test_check_annotation(tb, 2, 3, _COMP_PARAMS("color=#000"));
+   _test_check_annotation(tb, 0, 1, _COMP_PARAMS("font_size=10"));
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_size=10", "color=#000"));
+
+   /* Delete annotations directly */
+   evas_object_textblock_text_markup_set(tb, "hello world");
+   an = evas_object_textblock_annotation_insert(tb, 0, 1, "color=#fff");
+   an2 = evas_object_textblock_annotation_insert(tb, 2, 3, "font_size=14");
+   evas_object_textblock_annotation_del(tb, an);
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_size=14"));
+   evas_object_textblock_annotation_del(tb, an2);
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS());
+   an = evas_object_textblock_annotation_insert(tb, 0, 1, "color=#fff");
+   _test_check_annotation(tb, 2, 3, _COMP_PARAMS());
+   _test_check_annotation(tb, 1, 1, _COMP_PARAMS("color=#fff"));
+   evas_object_textblock_annotation_del(tb, an);
+   _test_check_annotation(tb, 1, 1, _COMP_PARAMS());
+
+   /* Check blocking of "item formats" */
+   evas_object_textblock_text_markup_set(tb, "hello world");
+   an = evas_object_textblock_annotation_insert(tb, 0, 1, "ps");
+   _test_check_annotation(tb, 0, 1, _COMP_PARAMS());
+   an = evas_object_textblock_annotation_insert(tb, 0, 1, "color=#fff");
+   _test_check_annotation(tb, 0, 1, _COMP_PARAMS("color=#fff"));
+   an = evas_object_textblock_annotation_insert(tb, 2, 3, "br");
+   an = evas_object_textblock_annotation_insert(tb, 6, 7, "item");
+   _test_check_annotation(tb, 0, 8, _COMP_PARAMS("color=#fff"));
+
+   END_TB_TEST();
+}
+END_TEST;
+
 void evas_test_textblock(TCase *tc)
 {
    tcase_add_test(tc, evas_textblock_simple);
@@ -3995,6 +4115,7 @@ void evas_test_textblock(TCase *tc)
    tcase_add_test(tc, evas_textblock_items);
    tcase_add_test(tc, evas_textblock_delete);
    tcase_add_test(tc, evas_textblock_obstacle);
+   tcase_add_test(tc, evas_textblock_annotation);
 #ifdef HAVE_HYPHEN
    tcase_add_test(tc, evas_textblock_hyphenation);
 #endif

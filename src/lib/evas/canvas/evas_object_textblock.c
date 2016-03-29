@@ -207,6 +207,12 @@ typedef struct _Evas_Object_Textblock_Format      Evas_Object_Textblock_Format;
 typedef struct _Evas_Textblock_Selection_Iterator Evas_Textblock_Selection_Iterator;
 /**
  * @internal
+ * @typedef Evas_Textblock_Annotation_Iterator
+ * A textblock annotation iterator.
+ */
+typedef struct _Evas_Textblock_Annotation_Iterator Evas_Textblock_Annotation_Iterator;
+/**
+ * @internal
  * @def IS_AT_END(ti, ind)
  * Return true if ind is at the end of the text item, false otherwise.
  */
@@ -299,6 +305,7 @@ struct _Evas_Textblock_Node_Format
    const char                         *orig_format;  /**< Original format information. */
    Evas_Object_Textblock_Node_Text    *text_node;  /**< The text node it's pointing to. */
    size_t                              offset;  /**< Offset from the last format node of the same text. */
+   Evas_Textblock_Annotation          *annotation; /**< Pointer to annotation handle. */
    struct {
       unsigned char l, r, t, b;
    } pad;  /**< Amount of padding required. */
@@ -479,6 +486,13 @@ struct _Evas_Textblock_Cursor
    Evas_Object_Textblock_Node_Text *node;
 };
 
+struct _Evas_Textblock_Annotation
+{
+   EINA_INLIST;
+   Evas_Object                       *obj;
+   Evas_Object_Textblock_Node_Format *start_node, *end_node;
+};
+
 /* Size of the index array */
 #define TEXTBLOCK_PAR_INDEX_SIZE 10
 struct _Evas_Object_Textblock
@@ -500,6 +514,7 @@ struct _Evas_Object_Textblock
    Eina_List                          *anchors_item;
    Eina_List                          *obstacles;
    Eina_List                          *hyphen_items; /* Hyphen items storage to free when clearing lines */
+   Evas_Textblock_Annotation          *annotations; /* Hyphen items storage to free when clearing lines */
    int                                 last_w, last_h;
    struct {
       int                              l, r, t, b;
@@ -527,6 +542,13 @@ struct _Evas_Object_Textblock
 };
 
 struct _Evas_Textblock_Selection_Iterator
+{
+   Eina_Iterator                       iterator; /**< Eina Iterator. */
+   Eina_List                           *list; /**< Head of list. */
+   Eina_List                           *current; /**< Current node in loop. */
+};
+
+struct _Evas_Textblock_Annotation_Iterator
 {
    Eina_Iterator                       iterator; /**< Eina Iterator. */
    Eina_List                           *list; /**< Head of list. */
@@ -613,6 +635,8 @@ static size_t _evas_textblock_node_format_pos_get(const Evas_Object_Textblock_No
 static void _evas_textblock_node_format_remove(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Format *n, int visual_adjustment);
 static void _evas_textblock_node_format_free(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Format *n);
 static void _evas_textblock_node_text_free(Evas_Object_Textblock_Node_Text *n);
+static void _evas_textblock_annotation_remove(Evas_Textblock_Data *o, Evas_Textblock_Annotation *an, Eina_Bool remove_nodes);
+static void _evas_textblock_annotations_clear(Evas_Textblock_Data *o);
 static void _evas_textblock_changed(Evas_Textblock_Data *o, Evas_Object *eo_obj);
 static void _evas_textblock_invalidate_all(Evas_Textblock_Data *o);
 static void _evas_textblock_cursors_update_offset(const Evas_Textblock_Cursor *cur, const Evas_Object_Textblock_Node_Text *n, size_t start, int offset);
@@ -800,6 +824,10 @@ static void
 _nodes_clear(const Evas_Object *eo_obj)
 {
    Evas_Textblock_Data *o = eo_data_scope_get(eo_obj, MY_CLASS);
+
+   /* First, clear all annotations that may have spawned format nodes. */
+   _evas_textblock_annotations_clear(o);
+
    while (o->text_nodes)
      {
         Evas_Object_Textblock_Node_Text *n;
@@ -8641,10 +8669,20 @@ _evas_textblock_node_format_remove_matching(Evas_Textblock_Data *o,
                        if (_FORMAT_IS_CLOSER_OF(
                                 fnode->orig_format, fstr + 1, fstr_len - 1))
                          {
+                            Eina_Bool have_annotation = !!fmt->annotation;
+
                             fnode = eina_list_data_get(i);
                             formats = eina_list_remove_list(formats, i);
                             _evas_textblock_node_format_remove(o, fnode, 0);
                             _evas_textblock_node_format_remove(o, fmt, 0);
+
+                            /* Only matching format nodes may be the result
+                             * of an annotation. */
+                            if (have_annotation)
+                              {
+                                 _evas_textblock_annotation_remove(
+                                       o, fmt->annotation, EINA_FALSE);
+                              }
                             break;
                          }
                     }
@@ -9543,8 +9581,9 @@ _evas_textblock_cursor_is_at_the_end(const Evas_Textblock_Cursor *cur)
               EINA_TRUE : EINA_FALSE;
 }
 
-EAPI Eina_Bool
-evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur, const char *format)
+Eina_Bool
+_evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur,
+      const char *format, Evas_Object_Textblock_Node_Format **_fnode)
 {
    Evas_Object_Textblock_Node_Format *n;
    Eina_Bool is_visible;
@@ -9675,7 +9714,15 @@ evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur, const char *form
 
    if (!o->cursor->node)
       o->cursor->node = o->text_nodes;
+
+   if (_fnode) *_fnode = n;
    return is_visible;
+}
+
+EAPI Eina_Bool
+evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur, const char *format)
+{
+   return _evas_textblock_cursor_format_append(cur, format, NULL);
 }
 
 EAPI Eina_Bool
@@ -12845,6 +12892,299 @@ _evas_textblock_evas_object_paragraph_direction_get(Eo *eo_obj EINA_UNUSED,
                                                     Evas_Textblock_Data *o)
 {
    return o->paragraph_direction;
+}
+
+/** annotation iterator */
+/**
+  * @internal
+  * Returns the value of the current data of list node,
+  * and goes to the next list node.
+  *
+  * @param it the iterator.
+  * @param data the data of the current list node.
+  * @return EINA_FALSE if unsuccessful. Otherwise, returns EINA_TRUE.
+  */
+static Eina_Bool
+_evas_textblock_annotation_iterator_next(Evas_Textblock_Annotation_Iterator *it, void **data)
+{
+   if (!it->current)
+     return EINA_FALSE;
+
+   *data = eina_list_data_get(it->current);
+   it->current = eina_list_next(it->current);
+
+   return EINA_TRUE;
+}
+
+/**
+  * @internal
+  * Frees the annotation iterator.
+  * @param it the iterator to free
+  * @return EINA_FALSE if unsuccessful. Otherwise, returns EINA_TRUE.
+  */
+static Eina_Bool
+_evas_textblock_annotation_iterator_free(Evas_Textblock_Annotation_Iterator *it)
+{
+   EINA_MAGIC_SET(&it->iterator, 0);
+   it->current = NULL;
+   eina_list_free(it->list);
+   free(it);
+   return EINA_TRUE;
+}
+
+/**
+  * @internal
+  * Creates newly allocated  iterator associated to a list.
+  * @param list The list.
+  * @return If the memory cannot be allocated, NULL is returned.
+  * Otherwise, a valid iterator is returned.
+  */
+Eina_Iterator *
+_evas_textblock_annotation_iterator_new(Eina_List *list)
+{
+   Evas_Textblock_Selection_Iterator *it;
+
+   it = calloc(1, sizeof(Evas_Textblock_Annotation_Iterator));
+   if (!it) return NULL;
+
+   EINA_MAGIC_SET(&it->iterator, EINA_MAGIC_ITERATOR);
+   it->list = list;
+   it->current = list;
+
+   it->iterator.version = EINA_ITERATOR_VERSION;
+   it->iterator.next = FUNC_ITERATOR_NEXT(
+         _evas_textblock_annotation_iterator_next);
+   it->iterator.free = FUNC_ITERATOR_FREE(
+         _evas_textblock_annotation_iterator_free);
+
+   return &it->iterator;
+}
+
+static size_t
+_node_text_position_get(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Text *node)
+{
+   Evas_Object_Textblock_Node_Text *n;
+   size_t ret = 0;
+   EINA_INLIST_FOREACH(o->text_nodes, n)
+     {
+        if (n == node) break;
+        ret += eina_ustrbuf_length_get(n->unicode);
+     }
+   if (!n) return 0;
+   return ret;
+}
+
+static size_t
+_textblock_fnode_pos_get(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Format *fnode)
+{
+   /* Get the relative offset to cur's text node */
+   size_t off = _evas_textblock_node_format_pos_get(fnode);
+   size_t toff = _node_text_position_get(o, fnode->text_node);
+
+   return off + toff;
+}
+
+/* Annotation API - WIP */
+
+static Eina_Bool
+_textblock_annotation_set(Eo *eo_obj, Evas_Textblock_Data *o,
+      Evas_Textblock_Annotation *an, size_t start, size_t end,
+      const char *format)
+{
+   int len;
+   char *buf;
+   Evas_Textblock_Node_Format *fnode;
+   Evas_Textblock_Cursor *cur = evas_obj_textblock_cursor_new(eo_obj);
+
+   /* Add opening format at 'start' */
+   evas_textblock_cursor_pos_set(cur, start);
+   len = strlen(format);
+   buf = malloc(len + 3);
+   sprintf(buf, "<%s>", format);
+   _evas_textblock_cursor_format_append(cur, buf, &fnode);
+   free(buf);
+   an->start_node = fnode;
+   fnode->annotation = an;
+
+   /* Add closing format at end + 1 */
+   evas_textblock_cursor_pos_set(cur, end + 1);
+   len = strlen(format);
+   buf = malloc(len + 4);
+   sprintf(buf, "</%s>", format);
+   _evas_textblock_cursor_format_append(cur, buf, &fnode);
+   free(buf);
+   an->end_node = fnode;
+   fnode->annotation = an;
+   evas_textblock_cursor_free(cur);
+
+   o->format_changed = EINA_TRUE;
+   return EINA_TRUE;
+}
+
+EOLIAN static const char *
+_evas_textblock_annotation_get(Eo *eo_obj EINA_UNUSED, Evas_Textblock_Data *o EINA_UNUSED,
+      Evas_Textblock_Annotation *annotation)
+{
+   if (!annotation || (annotation->obj != eo_obj))
+     {
+        ERR("Used invalid handle or of a different object");
+        return EINA_FALSE;
+     }
+
+   return (annotation->start_node ? annotation->start_node->format : NULL);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_annotation_set(Eo *eo_obj EINA_UNUSED,
+      Evas_Textblock_Data *o, Evas_Textblock_Annotation *annotation,
+      const char *format)
+{
+   if (!annotation || (annotation->obj != eo_obj))
+     {
+        ERR("Used invalid handle or of a different object");
+        return EINA_FALSE;
+     }
+
+   if (!annotation->start_node || !annotation->end_node) return EINA_FALSE;
+   if (!format || (format[0] == '\0')) return EINA_FALSE;
+
+   /* XXX: Not efficient but works and saves code */
+   size_t start = _textblock_fnode_pos_get(o, annotation->start_node);
+   size_t end = _textblock_fnode_pos_get(o, annotation->end_node) - 1;
+
+   _evas_textblock_node_format_remove(o, annotation->start_node, 0);
+   _evas_textblock_node_format_remove(o, annotation->end_node, 0);
+
+   _textblock_annotation_set(eo_obj, o, annotation, start, end, format);
+
+   return EINA_TRUE;
+}
+
+static void
+_evas_textblock_annotation_remove(Evas_Textblock_Data *o,
+      Evas_Textblock_Annotation *an, Eina_Bool remove_nodes)
+{
+   if (remove_nodes)
+     {
+        _evas_textblock_node_format_remove(o, an->start_node, 0);
+        _evas_textblock_node_format_remove(o, an->end_node, 0);
+     }
+   o->annotations = (Evas_Textblock_Annotation *)
+      eina_inlist_remove(EINA_INLIST_GET(o->annotations),
+            EINA_INLIST_GET(an));
+   free(an);
+}
+
+static void
+_evas_textblock_annotations_clear(Evas_Textblock_Data *o)
+{
+   Evas_Textblock_Annotation *an;
+
+   EINA_INLIST_FREE(o->annotations, an)
+     {
+        _evas_textblock_annotation_remove(o, an, EINA_TRUE);
+     }
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_annotation_del(Eo *eo_obj EINA_UNUSED,
+      Evas_Textblock_Data *o, Evas_Textblock_Annotation *annotation)
+{
+   if (!annotation || (annotation->obj != eo_obj))
+     {
+        ERR("Used invalid handle or of a different object");
+        return EINA_FALSE;
+     }
+
+   _evas_textblock_annotation_remove(o, annotation, EINA_TRUE);
+   o->format_changed = EINA_TRUE;
+
+   //XXX: It's a workaround. The underlying problem is that only new format
+   // nodes are checks when their respective text nodes are invalidated (see
+   // _format_changes_invalidate_text_nodes). Complete removal of the format
+   // nodes was not handled properly (as formats could only be removed via
+   // text changes e.g. deleting characters).
+   _evas_textblock_invalidate_all(o);
+
+   _evas_textblock_changed(o, eo_obj);
+   return EINA_TRUE;
+}
+
+EOLIAN static Evas_Textblock_Annotation *
+_evas_textblock_annotation_insert(Eo *eo_obj, Evas_Textblock_Data *o,
+      size_t start, size_t end EINA_UNUSED, const char *format)
+{
+   Evas_Textblock_Annotation *ret = NULL;
+   Eina_Strbuf *buf;
+   Eina_Bool first = EINA_TRUE;
+   const char *item;
+
+   if (!format || (format[0] == '\0') || (end <= start)) return NULL;
+
+   /* Sanitize the string and reject format items, closing '/' marks. */
+   buf = eina_strbuf_new();
+   while ((item = _format_parse(&format)))
+     {
+        int itlen = format - item;
+        /* We care about all of the formats even after a - except for
+         * item which we don't care after a - because it's just a standard
+         * closing */
+        if ((!strncmp(item, "\n", itlen) || !strncmp(item, "\\n", itlen)) ||
+              (!strncmp(item, "\t", itlen) || !strncmp(item, "\\t", itlen)) ||
+              (!strncmp(item, "br", itlen) && (itlen >= 2)) ||
+              (!strncmp(item, "tab", itlen) && (itlen >= 3)) ||
+              (!strncmp(item, "ps", itlen) && (itlen >= 2)) ||
+              (!strncmp(item, "item", itlen) && (itlen >= 4)))
+          {
+             continue;
+          }
+        if (first)
+          {
+             first = EINA_FALSE;
+          }
+        else
+          {
+             eina_strbuf_append_length(buf, " ", 1);
+          }
+        eina_strbuf_append_length(buf, item, itlen);
+     }
+
+   format = eina_strbuf_string_steal(buf);
+   if (!format || (format[0] == '\0')) return NULL;
+
+   ret = calloc(1, sizeof(Evas_Textblock_Annotation));
+   ret->obj = eo_obj;
+
+   o->annotations = (Evas_Textblock_Annotation *)
+      eina_inlist_append(EINA_INLIST_GET(o->annotations),
+            EINA_INLIST_GET(ret));
+
+   _textblock_annotation_set(eo_obj, o, ret, start, end, format);
+
+   _evas_textblock_changed(o, eo_obj);
+
+   return ret;
+}
+
+EOLIAN static Eina_Iterator *
+_evas_textblock_annotation_range_get_all(Eo *eo_obj EINA_UNUSED, Evas_Textblock_Data *o EINA_UNUSED,
+      size_t start, size_t end)
+{
+   Eina_List *lst = NULL;
+   Evas_Textblock_Annotation *it;
+
+   EINA_INLIST_FOREACH(o->annotations, it)
+     {
+        size_t start1, end1;
+        if (!it->start_node || !it->end_node) continue;
+        start1 = _textblock_fnode_pos_get(o, it->start_node);
+        end1 = _textblock_fnode_pos_get(o, it->end_node) - 1;
+        if (!((start1 > end) || (end1 < start)))
+          {
+             lst = eina_list_append(lst, it);
+          }
+     }
+   return _evas_textblock_annotation_iterator_new(lst);
 }
 
 /**

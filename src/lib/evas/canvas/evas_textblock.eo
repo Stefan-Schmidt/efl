@@ -1,5 +1,6 @@
 struct @extern Evas.Textblock.Cursor;
 struct @extern Evas.Textblock.Style;
+struct @extern Evas.Textblock.Annotation;
 struct Evas.Textblock.Node_Format;
 
 class Evas.Textblock (Evas.Object)
@@ -192,6 +193,30 @@ class Evas.Textblock (Evas.Object)
             b: Evas.Coord;
          }
       }
+      @property annotation {
+         set {
+            [[Sets a new format for $annotation.
+
+              This will replace the format applied by $annotation with $format.
+              Assumes that $annotation is a handle for an existing annotation,
+              i.e. one that was added using @.annotation_insert to this object.
+              Otherwise, this will fail and return $false.
+            ]]
+         return: bool; [[$true on success, $false otherwise.]]
+         }
+         get {
+         [[Returns the format (string) of this annotation.
+
+           @since 1.18
+         ]]
+         }
+         keys {
+            annotation: Evas.Textblock.Annotation *;
+         }
+         values {
+            format: const(char)*;
+         }
+      }
       line_number_geometry_get @const {
          [[Get the geometry of a line number.]]
          return: bool; [[$true on success, $false otherwise.]]
@@ -319,6 +344,50 @@ class Evas.Textblock (Evas.Object)
 
            @since 1.15
          ]]
+      }
+      annotation_insert {
+         [[Inserts an annotation format in a specified range [$start, $end]
+           in the text.
+
+           This will add both opening and closing formats for the given
+           $format.
+           Returns a handle to manipulate the inserted annotation.
+
+           @since 1.18
+         ]]
+         /*
+         return: free(own(iterator<Evas.Textblock.Annotation *> *),
+                 eina_iterator_free); [[Handle of the Annotation]]
+          */
+         return: Evas.Textblock.Annotation *;
+         params {
+              @in start: size;
+              @in end:   size;
+              @in format: const(char)*;
+         }
+      }
+      annotation_range_get_all {
+         [[Returns an iterator of all the handles in a range.
+
+           @since 1.18
+         ]]
+         return: free(own(iterator<Evas.Textblock.Annotation *> *),
+                 eina_iterator_free); [[Handle of the Annotation]]
+         params {
+              @in start: size;
+              @in end:   size;
+         }
+      }
+      annotation_del {
+         [[Deletes $annotation.
+
+           All formats applied by $annotations will be removed and it will be
+           deleted.
+         ]]
+         return: bool; [[$true on success, $false otherwise.]]
+         params {
+            @in annotation: Evas.Textblock.Annotation *;
+         }
       }
    }
    implements {

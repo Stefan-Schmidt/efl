@@ -3070,6 +3070,16 @@ typedef struct _Evas_Textblock_Style              Evas_Textblock_Style;
 typedef struct _Evas_Textblock_Cursor             Evas_Textblock_Cursor;
 
 /**
+ * @typedef Evas_Textblock_Annotation
+ *
+ * A textblock annotation handle. This handle is used to to maipulate
+ * annotation instances in the textblock object.
+ * @see evas_object_textblock_annotation_insert
+ *
+ */
+typedef struct _Evas_Textblock_Annotation         Evas_Textblock_Annotation;
+
+/**
  * @typedef Evas_Object_Textblock_Node_Format
  * A format node.
  *
