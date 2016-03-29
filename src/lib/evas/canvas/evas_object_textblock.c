@@ -9542,6 +9542,20 @@ _evas_textblock_cursor_is_at_the_end(const Evas_Textblock_Cursor *cur)
               EINA_TRUE : EINA_FALSE;
 }
 
+#warning remove this
+#if 0
+static void
+_nodes_format_print_all(Evas_Object_Textblock_Node_Text *node)
+{
+   Evas_Textblock_Node_Format *fnode;
+   printf("Text Node %p:\n", node);
+   EINA_INLIST_FOREACH(node->format_node, fnode)
+     {
+        printf("-- Format Node %p (Text Node: %p): offset=%lu \n", fnode, fnode->text_node, fnode->offset);
+     }
+}
+#endif
+
 EAPI Eina_Bool
 evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur, const char *format)
 {
@@ -9674,6 +9688,10 @@ evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur, const char *form
 
    if (!o->cursor->node)
       o->cursor->node = o->text_nodes;
+#warning remove this
+#if 0
+   _nodes_format_print_all(cur->node);
+#endif
    return is_visible;
 }
 
@@ -12844,6 +12862,95 @@ _evas_textblock_evas_object_paragraph_direction_get(Eo *eo_obj EINA_UNUSED,
                                                     Evas_Textblock_Data *o)
 {
    return o->paragraph_direction;
+}
+
+/* Annotation API - WIP */
+EOLIAN static Eina_Bool
+_evas_textblock_annotation_set(Eo *eo_obj, Evas_Textblock_Data *o,
+      int start, int end EINA_UNUSED, char *format)
+{
+   int len;
+   char *buf;
+   Evas_Textblock_Cursor *cur;
+
+   if (!format || (format[0] == '\0')) return EINA_TRUE;
+
+   if ((end >= 0) && (end <= start)) return EINA_FALSE;
+   cur = evas_obj_textblock_cursor_new(eo_obj);
+
+   /* Add opening format at 'start' */
+   evas_textblock_cursor_pos_set(cur, start);
+   len = strlen(format);
+   buf = malloc(len + 3);
+   sprintf(buf, "<%s>", format);
+   evas_textblock_cursor_format_append(cur, buf);
+   free(buf);
+
+   /* Only close the format if (end >= 0) */
+   if (end >= 0)
+     {
+        evas_textblock_cursor_pos_set(cur, end + 1);
+        len = strlen(format);
+        buf = malloc(len + 4);
+        sprintf(buf, "</%s>", format);
+        evas_textblock_cursor_format_append(cur, buf);
+        free(buf);
+     }
+   evas_textblock_cursor_free(cur);
+   _evas_textblock_changed(o, eo_obj);
+
+   return EINA_TRUE;
+}
+
+EOLIAN static char *
+_evas_textblock_annotation_get(Eo *eo_obj EINA_UNUSED, Evas_Textblock_Data *o EINA_UNUSED,
+      int start EINA_UNUSED, int end EINA_UNUSED)
+{
+   const Evas_Object_Textblock_Node_Text *node;
+   const Evas_Object_Textblock_Node_Format *itr;
+   size_t npos, pos;
+   char *ret;
+   Eina_Bool first = EINA_TRUE;
+
+   Evas_Textblock_Cursor *cur = evas_object_textblock_cursor_new(eo_obj);
+   Eina_Strbuf *buf = eina_strbuf_new();
+
+   evas_textblock_cursor_pos_set(cur, start);
+
+   node = cur->node;
+   pos = npos = start - cur->pos;
+   EINA_INLIST_FOREACH(cur->node->format_node, itr)
+     {
+        while (itr->text_node != node)
+          {
+             npos += eina_ustrbuf_length_get(node->unicode);
+             node = _NODE_TEXT(EINA_INLIST_GET(node)->next);
+             pos = npos;
+          }
+        pos += itr->offset;
+        if (pos > (size_t) end) break;
+        if (pos >= (size_t) start)
+          {
+             if (!first)
+               {
+                  eina_strbuf_append(buf, " ");
+               }
+             else
+               {
+                  first = EINA_FALSE;
+               }
+             if (!itr->opener)
+               {
+                  eina_strbuf_append(buf, "/");
+               }
+             eina_strbuf_append(buf, itr->format);
+          }
+     }
+   evas_textblock_cursor_free(cur);
+   ret = eina_strbuf_string_steal(buf);
+   eina_strbuf_free(buf);
+
+   return ret;
 }
 
 /**

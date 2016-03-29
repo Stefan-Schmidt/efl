@@ -3952,6 +3952,57 @@ START_TEST(evas_textblock_hyphenation)
 END_TEST;
 #endif
 
+static void
+_test_check_annotation(Evas_Object *tb,
+      int start, int end, const char *format)
+{
+   char *tmp = evas_object_textblock_annotation_get(tb, start, end);
+   ck_assert_msg(!strcmp(format, tmp),
+         "format at range [%d, %d] \"%s\" doesn't match given format \"%s\".",
+         start, end, tmp, format);
+   if (tmp) free(tmp);
+}
+
+START_TEST(evas_textblock_annotation)
+{
+   START_TB_TEST();
+   const char *buf =
+      "This text will check annotation.<ps>"
+      "By \"annotating\" the text, we can apply formatting simply by"
+      " specifying a range (start, end) in the text, and the format we want"
+      " for it."
+      ;
+   evas_object_textblock_text_markup_set(tb, buf);
+   ck_assert(evas_object_textblock_annotation_set(tb, 0, 3, NULL));
+   ck_assert(evas_object_textblock_annotation_set(tb, 0, 3, ""));
+   ck_assert(!evas_object_textblock_annotation_set(tb, 1, 0, "color=#fff"));
+
+   _test_check_annotation(tb, 0, 10, "");
+
+   evas_object_textblock_annotation_set(tb, 0, 3, "font_weight=bold");
+   _test_check_annotation(tb, 0, 3, "font_weight=bold");
+   _test_check_annotation(tb, 1, 3, "");
+
+   evas_object_textblock_annotation_set(tb, 50, 60, "color=#0ff");
+   _test_check_annotation(tb, 0, 49, "font_weight=bold /font_weight=bold ps");
+   _test_check_annotation(tb, 0, 50, "font_weight=bold /font_weight=bold ps color=#0ff");
+   _test_check_annotation(tb, 0, 51, "font_weight=bold /font_weight=bold ps color=#0ff");
+   _test_check_annotation(tb, 0, 59, "font_weight=bold /font_weight=bold ps color=#0ff");
+   _test_check_annotation(tb, 0, 60, "font_weight=bold /font_weight=bold ps color=#0ff");
+   _test_check_annotation(tb, 0, 61, "font_weight=bold /font_weight=bold ps color=#0ff /color=#0ff");
+   _test_check_annotation(tb, 40, 51, "color=#0ff");
+   _test_check_annotation(tb, 40, 61, "color=#0ff /color=#0ff");
+
+   evas_object_textblock_annotation_set(tb, 65, -1, "font_size=18");
+   _test_check_annotation(tb, 66, 1000, "");
+   _test_check_annotation(tb, 65, 1000, "font_size=18");
+   _test_check_annotation(tb, 64, 1000, "font_size=18");
+   _test_check_annotation(tb, 0, 1000, "font_weight=bold /font_weight=bold ps color=#0ff /color=#0ff font_size=18");
+
+   END_TB_TEST();
+}
+END_TEST;
+
 void evas_test_textblock(TCase *tc)
 {
    tcase_add_test(tc, evas_textblock_simple);
@@ -3974,6 +4025,7 @@ void evas_test_textblock(TCase *tc)
    tcase_add_test(tc, evas_textblock_items);
    tcase_add_test(tc, evas_textblock_delete);
    tcase_add_test(tc, evas_textblock_obstacle);
+   tcase_add_test(tc, evas_textblock_annotation);
 #ifdef HAVE_HYPHEN
    tcase_add_test(tc, evas_textblock_hyphenation);
 #endif

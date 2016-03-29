@@ -192,6 +192,43 @@ class Evas.Textblock (Evas.Object)
             b: Evas.Coord;
          }
       }
+      @property annotation {
+         [[Annotation format in a given range in the text
+
+           The annotation $format begins at $start and usually closes at
+           $end (inclusive).
+
+           @since 1.18
+         ]]
+
+         set {
+            [[Sets an annotation format in a specified range [$start, $end]
+              in the text.
+
+              This will add both opening and closing formats for the given
+              $format. There is an option to given a negative value for $end,
+              in which case there will be no closing format, that is, the format
+              will be applied all the way to the end of the text until it will
+              be closed in a later call.
+            ]]
+            return: bool;
+         }
+         get {
+            [[Retrieves the annotation format instances that exist in the given
+              range [$start, $end]. The returned string may be a space-separated
+              list if multiple format instances were added in that range.
+              Note that formats that take effect in that range, but were not
+              added in it (i.e. they were added before) will not be included.
+            ]]
+         }
+         keys {
+            start: int;
+            end:   int;
+         }
+         values {
+            format: char *;
+         }
+      }
       line_number_geometry_get @const {
          [[Get the geometry of a line number.]]
          return: bool; [[$true on success, $false otherwise.]]
