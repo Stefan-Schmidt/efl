@@ -522,6 +522,7 @@ struct _Evas_Object_Textblock
    } style_pad;
    double                              valign;
    Eina_Stringshare                   *markup_text;
+   char                               *utf8;
    void                               *engine_data;
    const char                         *repch;
    const char                         *bidi_delimiters;
@@ -8395,21 +8396,10 @@ evas_textblock_cursor_char_next(Evas_Textblock_Cursor *cur)
    return evas_obj_textblock_cursor_char_next(cur->obj, cur);
 }
 
-EOLIAN static Eina_Bool
-_evas_textblock_cursor_char_next(Eo *eo_obj, Evas_Textblock_Data *o EINA_UNUSED,
-      Evas_Textblock_Cursor *cur)
+static Eina_Bool
+_cursor_next_par_if_needed(Evas_Textblock_Cursor *cur, int ind)
 {
-   int ind;
-   const Eina_Unicode *text;
-
-   if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
-   evas_object_async_block(obj);
-   TB_NULL_CHECK(cur->node, EINA_FALSE);
-
-   ind = cur->pos;
-   text = eina_ustrbuf_string_get(cur->node->unicode);
-   if (text[ind]) ind++;
+   const Eina_Unicode *text = eina_ustrbuf_string_get(cur->node->unicode);
    /* Only allow pointing a null if it's the last paragraph.
     * because we don't have a PS there. */
    if (text[ind])
@@ -8434,6 +8424,25 @@ _evas_textblock_cursor_char_next(Eo *eo_obj, Evas_Textblock_Data *o EINA_UNUSED,
              return EINA_TRUE;
           }
      }
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_char_next(Eo *eo_obj, Evas_Textblock_Data *o EINA_UNUSED,
+      Evas_Textblock_Cursor *cur)
+{
+   int ind;
+   const Eina_Unicode *text;
+
+   if (!cur) return EINA_FALSE;
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
+   evas_object_async_block(obj);
+   TB_NULL_CHECK(cur->node, EINA_FALSE);
+
+   ind = cur->pos;
+   text = eina_ustrbuf_string_get(cur->node->unicode);
+   if (text[ind]) ind++;
+
+   return _cursor_next_par_if_needed(cur, ind);
 }
 
 EAPI Eina_Bool
@@ -9266,7 +9275,8 @@ _evas_textblock_node_text_new(void)
  */
 static void
 _evas_textblock_cursor_break_paragraph(Evas_Textblock_Cursor *cur,
-                              Evas_Object_Textblock_Node_Format *fnode)
+                              Evas_Object_Textblock_Node_Format *fnode,
+                              Eina_Bool legacy)
 {
    Evas_Object_Textblock_Node_Text *n;
 
@@ -9285,20 +9295,27 @@ _evas_textblock_cursor_break_paragraph(Evas_Textblock_Cursor *cur,
         size_t len, start;
         const Eina_Unicode *text;
 
+        if (legacy)
+          {
         /* If there was a format node in the delete range,
          * make it our format and update the text_node fields,
          * otherwise, use the paragraph separator
          * of the previous paragraph. */
-        nnode  = _NODE_FORMAT(EINA_INLIST_GET(fnode)->next);
-        if (nnode && (nnode->text_node == cur->node))
-          {
-             n->format_node = nnode;
-             nnode->offset--; /* We don't have to take the replacement char
-                                 into account anymore */
-             while (nnode && (nnode->text_node == cur->node))
+             nnode  = _NODE_FORMAT(EINA_INLIST_GET(fnode)->next);
+             if (nnode && (nnode->text_node == cur->node))
                {
-                  nnode->text_node = n;
-                  nnode = _NODE_FORMAT(EINA_INLIST_GET(nnode)->next);
+                  n->format_node = nnode;
+                  nnode->offset--; /* We don't have to take the replacement char
+                                      into account anymore */
+                  while (nnode && (nnode->text_node == cur->node))
+                    {
+                       nnode->text_node = n;
+                       nnode = _NODE_FORMAT(EINA_INLIST_GET(nnode)->next);
+                    }
+               }
+             else
+               {
+                  n->format_node = fnode;
                }
           }
         else
@@ -9306,8 +9323,12 @@ _evas_textblock_cursor_break_paragraph(Evas_Textblock_Cursor *cur,
              n->format_node = fnode;
           }
 
-        /* cur->pos now points to the PS, move after. */
-        start = cur->pos + 1;
+        start = cur->pos;
+        if (legacy)
+          {
+             /* cur->pos now points to the PS, move after. */
+             start++;
+          }
         len = eina_ustrbuf_length_get(cur->node->unicode) - start;
         if (len > 0)
           {
@@ -9317,7 +9338,7 @@ _evas_textblock_cursor_break_paragraph(Evas_Textblock_Cursor *cur,
              cur->node->dirty = EINA_TRUE;
           }
      }
-   else
+   else if (!cur->node)
      {
         fnode = o->format_nodes;
         if (fnode)
@@ -9452,26 +9473,27 @@ _evas_textblock_invalidate_all(Evas_Textblock_Data *o)
      }
 }
 
-EOLIAN static int
-_evas_textblock_cursor_text_append(Eo *eo_obj,
-      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
-      const char *_text)
+static int
+_cursor_text_append(Eo *eo_obj, Evas_Textblock_Cursor *cur, const char *_text,
+      Eina_Bool legacy)
 {
    Evas_Object_Textblock_Node_Text *n;
    Evas_Object_Textblock_Node_Format *fnode = NULL;
-   Eina_Unicode *text;
+   Eina_Unicode *text, *orig_text;
    int len = 0;
 
    if (!cur) return 0;
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    text = eina_unicode_utf8_to_unicode(_text, &len);
+   orig_text = text = eina_unicode_utf8_to_unicode(_text, &len);
+   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    n = cur->node;
    if (n)
      {
         Evas_Object_Textblock_Node_Format *nnode;
-        fnode = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, EINA_TRUE);
+        fnode = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, legacy);
         fnode = _evas_textblock_node_format_last_at_off(fnode);
         /* find the node after the current in the same paragraph
          * either we find one and then take the next, or we try to get
@@ -9510,7 +9532,10 @@ _evas_textblock_cursor_text_append(Eo *eo_obj,
         cur->node = n;
      }
 
-   eina_ustrbuf_insert_length(n->unicode, text, len, cur->pos);
+   size_t pos = cur->pos;
+   Evas_Object_Textblock_Node_Text *nn = NULL;
+   eina_ustrbuf_insert_length(n->unicode, text, eina_unicode_strlen(text), pos);
+
    /* Advance the formats */
    if (fnode && (fnode->text_node == cur->node))
      fnode->offset += len;
@@ -9518,19 +9543,105 @@ _evas_textblock_cursor_text_append(Eo *eo_obj,
    /* Update all the cursors after our position. */
    _evas_textblock_cursors_update_offset(cur, cur->node, cur->pos, len);
 
+   if (nn)
+     {
+        cur->node = nn;
+        len = eina_unicode_strlen(text);
+     }
    _evas_textblock_changed(o, cur->obj);
    n->dirty = EINA_TRUE;
-   free(text);
+   free(orig_text);
 
    if (!o->cursor->node)
       o->cursor->node = o->text_nodes;
    return len;
 }
 
+static int
+_cursor_text_prepend(Eo *eo_obj, Evas_Textblock_Cursor *cur, const char *_text,
+      Eina_Bool legacy)
+{
+   int len;
+   /*append is essentially prepend without advancing */
+   if (!cur) return 0;
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
+   evas_object_async_block(obj);
+   len = _cursor_text_append(eo_obj, cur, _text, legacy);
+   if (len == 0) return 0;
+   cur->pos += len; /*Advance */
+   return len;
+}
+
+static int
+_prepend_text_run2(Evas_Textblock_Cursor *cur, const char *s, const char *p)
+{
+   if ((s) && (p > s))
+     {
+        char *ts;
+
+        ts = alloca(p - s + 1);
+        strncpy(ts, s, p - s);
+        ts[p - s] = 0;
+        return _cursor_text_prepend(cur->obj, cur, ts, EINA_FALSE);
+     }
+   return 0;
+}
+
 EAPI int
 evas_textblock_cursor_text_append(Evas_Textblock_Cursor *cur, const char *_text)
 {
-   return evas_obj_textblock_cursor_text_append(cur->obj, cur, _text);
+   return _cursor_text_append(cur->obj, cur, _text, EINA_TRUE);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_text_append(Eo *eo_obj EINA_UNUSED,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
+      const char *text)
+{
+
+   if (!text) return 0;
+
+   const char *off = text;
+   int len = 0;
+
+   /* We make use of prepending the cursor, but this needs to return the current
+    * position's cursor, so we use a temporary one. */
+   Evas_Textblock_Cursor *cur2 = evas_object_textblock_cursor_new (cur->obj);
+   evas_textblock_cursor_copy(cur, cur2); //cur --> cur2
+
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
+   evas_object_async_block(obj);
+
+   while (*off)
+     {
+        char *format = NULL;
+        int n = 1;
+        if (!strncmp(_PARAGRAPH_SEPARATOR_UTF8, off,
+                    strlen(_PARAGRAPH_SEPARATOR_UTF8)))
+          {
+             format = "ps";
+             n = strlen(_PARAGRAPH_SEPARATOR_UTF8);
+          }
+        else if (!strncmp(_NEWLINE_UTF8, off, strlen(_NEWLINE_UTF8)))
+          {
+             format = "br";
+             n = strlen(_NEWLINE_UTF8);
+          }
+
+        if (format)
+          {
+             len += _prepend_text_run2(cur2, text, off);
+             if (evas_textblock_cursor_format_prepend(cur2, format))
+               {
+                  len++;
+               }
+             text = off + n; /* sync text with next segment */
+          }
+          off += n;
+     }
+   len += _prepend_text_run2(cur2, text, off);
+   evas_textblock_cursor_free(cur2);
+   return len;
 }
 
 EOLIAN static int
@@ -9538,22 +9649,26 @@ _evas_textblock_cursor_text_prepend(Eo *eo_obj,
       Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
       const char *_text)
 {
-   int len;
+   int ind, len;
    /*append is essentially prepend without advancing */
    if (!cur) return 0;
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   len = evas_textblock_cursor_text_append(cur, _text);
+   len = evas_obj_textblock_cursor_text_append(eo_obj, cur, _text);
    if (len == 0) return 0;
-   cur->pos += len; /*Advance */
+   ind = cur->pos + len; /*Advance */
+
+   /* Duplication a small check from cursor_char_next here: */
+   _cursor_next_par_if_needed(cur, ind);
    return len;
 }
 
 EAPI int
 evas_textblock_cursor_text_prepend(Evas_Textblock_Cursor *cur, const char *_text)
 {
-   return evas_obj_textblock_cursor_text_prepend(cur->obj, cur, _text);
+   return _cursor_text_prepend(cur->obj, cur, _text, EINA_TRUE);
 }
+
 /**
  * @internal
  * Free a format node
@@ -9835,7 +9950,7 @@ _evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur,
         _evas_textblock_cursors_update_offset(cur, cur->node, cur->pos, 1);
         if (_IS_PARAGRAPH_SEPARATOR(o, format))
           {
-             _evas_textblock_cursor_break_paragraph(cur, n);
+             _evas_textblock_cursor_break_paragraph(cur, n, EINA_TRUE);
           }
         else
           {
@@ -13507,6 +13622,77 @@ _evas_textblock_object_item_insert(Eo *eo_obj EINA_UNUSED,
    ret = _textblock_annotation_insert(eo_obj, o, pos, pos, format, EINA_TRUE);
 
    return ret;
+}
+
+EOLIAN static void
+_evas_textblock_efl_text_text_set(Eo *eo_obj, Evas_Textblock_Data *o EINA_UNUSED,
+      const char *text)
+{
+   Evas_Textblock_Cursor *cur;
+
+   evas_object_textblock_text_markup_set(eo_obj, "");
+   cur = evas_obj_textblock_cursor_new(eo_obj);
+   evas_obj_textblock_cursor_text_append(eo_obj, cur, text);
+}
+
+EOLIAN static const char *
+_evas_textblock_efl_text_text_get(Eo *eo_obj EINA_UNUSED, Evas_Textblock_Data *o)
+{
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
+   evas_object_async_block(obj);
+
+   Evas_Object_Textblock_Node_Text *node;
+   char *utf8, *off;
+
+   struct
+     {
+        char *utf8;
+        int len;
+     } *en;
+   Eina_List *lst_utf8 = NULL;
+   Eina_List *i;
+
+   int len = 0;
+
+   //XXX: not efficient atm. This value will be cached properly so in the
+   // meantime the utf8 field will be cleared each call.
+   if (o->utf8)
+     {
+        free(o->utf8);
+        o->utf8 = NULL;
+     }
+
+   // XXX: won't use cursor_paragraph_text_get as it's inefficient
+   // for this function (gets ranges, uses strbuf).
+
+   // gets utf8s and calc length
+   EINA_INLIST_FOREACH(o->text_nodes, node)
+     {
+        en = malloc(sizeof(*en));
+        en->utf8 = eina_unicode_unicode_to_utf8(eina_ustrbuf_string_get(node->unicode), &en->len);
+        lst_utf8 = eina_list_append(lst_utf8, en);
+        len += en->len;
+     }
+
+   utf8 = malloc(len + 1); // with terminating '/0'
+   if (!utf8) goto end;
+
+   off = utf8;
+   EINA_LIST_FOREACH(lst_utf8, i, en)
+     {
+        memcpy(off, en->utf8, en->len);
+        off += en->len;
+     }
+   utf8[len] = '\0';
+   o->utf8 = utf8;
+
+end:
+   EINA_LIST_FREE(lst_utf8, en)
+     {
+        free(en);
+     }
+
+   return o->utf8;
 }
 
 /**

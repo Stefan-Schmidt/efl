@@ -4111,6 +4111,92 @@ START_TEST(evas_textblock_annotation)
         _test_check_annotation(tb, 0, 5, _COMP_PARAMS());
      }
 
+   /* Using annotations with new text API */
+   efl_text_set(tb, "hello");
+   an = evas_object_textblock_annotation_insert(tb, 0, 4, "color=#fff");
+   _test_check_annotation(tb, 3, 3, _COMP_PARAMS("color=#fff"));
+   evas_textblock_cursor_pos_set(cur, 5);
+   /* Old API */
+   evas_textblock_cursor_text_append(cur, "a");
+   _test_check_annotation(tb, 0, 0, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 5, 5, _COMP_PARAMS());
+   /* New API */
+   evas_object_textblock_cursor_text_append(tb, cur, "a");
+   _test_check_annotation(tb, 0, 0, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 5, 5, _COMP_PARAMS("color=#fff"));
+
+   END_TB_TEST();
+}
+END_TEST;
+
+START_TEST(evas_textblock_text_iface)
+{
+   START_TB_TEST();
+   Evas_Coord nw, nh;
+   Evas_Coord bw, bh;
+   Evas_Coord w, h;
+   const char *utf8;
+
+   efl_text_set(tb, "hello world");
+   evas_object_textblock_size_native_get(tb, &bw, &bh);
+   efl_text_set(tb, "hello\nworld");
+   evas_object_textblock_size_native_get(tb, &nw, &nh);
+   ck_assert_int_gt(nh, bh);
+   ck_assert_int_gt(bw, nw);
+   efl_text_set(tb, "hello\nworld\ngoodbye\nworld");
+   evas_object_textblock_size_native_get(tb, &nw, &nh);
+   ck_assert_int_ge(nh, bh * 3);
+
+   /* text_insert */
+
+   /* text_remove */
+   efl_text_set(tb, "a");
+   evas_object_textblock_size_native_get(tb, &bw, &bh);
+   efl_text_set(tb, "a\nb");
+   evas_obj_textblock_cursor_pos_set(tb, cur, 1);
+   evas_obj_textblock_cursor_char_delete(tb, cur);
+   evas_object_textblock_size_native_get(tb, &nw, &nh);
+   ck_assert_int_eq(nh, bh);
+
+   efl_text_set(tb, "d");
+   evas_object_textblock_size_native_get(tb, &w, &h);
+   efl_text_set(tb, "aa\nb\nc\nd");
+   evas_object_textblock_size_native_get(tb, &bw, &bh);
+   evas_obj_textblock_cursor_pos_set(tb, cur, 0);
+   evas_obj_textblock_cursor_char_delete(tb, cur); // delete 'a'
+   evas_object_textblock_size_native_get(tb, &nw, &nh);
+   ck_assert_int_eq(nh, bh);
+   evas_obj_textblock_cursor_char_delete(tb, cur); // delete 'a'
+   evas_obj_textblock_cursor_char_delete(tb, cur); // delete '\n'
+   evas_object_textblock_size_native_get(tb, &nw, &nh);
+   ck_assert_int_lt(nh, bh);
+   /* "b\nc\nd" is left */
+   evas_object_textblock_cursor_char_delete(tb, cur); // b
+   evas_object_textblock_cursor_char_delete(tb, cur); // \n
+   evas_object_textblock_cursor_char_delete(tb, cur); // c
+   evas_object_textblock_cursor_char_delete(tb, cur); // \n
+   /* expecting "d" only */
+   evas_object_textblock_size_native_get(tb, &nw, &nh);
+   ck_assert_int_eq(nh, h);
+   ck_assert_int_eq(nw, w);
+
+   /* Text get */
+   utf8 = "a";
+   efl_text_set(tb, utf8);
+   ck_assert_str_eq(utf8, efl_text_get(tb));
+   utf8 = "a\nb";
+   efl_text_set(tb, utf8);
+   ck_assert_str_eq(utf8, efl_text_get(tb));
+   utf8 = "a\u2029b";
+   efl_text_set(tb, utf8);
+   ck_assert_str_eq(utf8, efl_text_get(tb));
+   utf8 = "a\u2029bc\ndef\n\u2029";
+   efl_text_set(tb, utf8);
+   ck_assert_str_eq(utf8, efl_text_get(tb));
+   utf8 = "\u2029\n\n\n\n\u2029\n\u2029\n\n\n";
+   efl_text_set(tb, utf8);
+   ck_assert_str_eq(utf8, efl_text_get(tb));
+
    END_TB_TEST();
 }
 END_TEST;
@@ -4138,6 +4224,7 @@ void evas_test_textblock(TCase *tc)
    tcase_add_test(tc, evas_textblock_delete);
    tcase_add_test(tc, evas_textblock_obstacle);
    tcase_add_test(tc, evas_textblock_annotation);
+   tcase_add_test(tc, evas_textblock_text_iface);
 #ifdef HAVE_HYPHEN
    tcase_add_test(tc, evas_textblock_hyphenation);
 #endif

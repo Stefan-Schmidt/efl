@@ -22,7 +22,7 @@ struct Evas_Textblock_Rectangle
    h: Evas.Coord; [[rectangle's height.]]
 }
 
-class Evas.Textblock (Evas.Object)
+class Evas.Textblock (Evas.Object, Efl.Text)
 {
    legacy_prefix: evas_object_textblock;
    eo_prefix: evas_obj_textblock;
@@ -760,5 +760,7 @@ class Evas.Textblock (Evas.Object)
       Eo.Base.dbg_info_get;
       Evas.Object.paragraph_direction.set;
       Evas.Object.paragraph_direction.get;
+      Efl.Text.text.set;
+      Efl.Text.text.get;
    }
 }
