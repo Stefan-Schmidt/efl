@@ -631,7 +631,7 @@ static const Evas_Object_Func object_func =
 
 static Eina_Bool _evas_textblock_cursor_is_at_the_end(const Evas_Textblock_Cursor *cur);
 static void _evas_textblock_node_text_remove(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Text *n);
-static Evas_Object_Textblock_Node_Format *_evas_textblock_cursor_node_format_before_or_at_pos_get(const Evas_Textblock_Cursor *cur);
+static Evas_Object_Textblock_Node_Format *_evas_textblock_cursor_node_format_before_or_at_pos_get(const Evas_Textblock_Cursor *cur, Eina_Bool legacy);
 static size_t _evas_textblock_node_format_pos_get(const Evas_Object_Textblock_Node_Format *fmt);
 static void _evas_textblock_node_format_remove(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Format *n, int visual_adjustment);
 static void _evas_textblock_node_format_free(Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Format *n);
@@ -7782,7 +7782,7 @@ _evas_textblock_node_visible_at_pos_get(const Evas_Object_Textblock_Node_Format 
  * @return the format node found.
  */
 static Evas_Object_Textblock_Node_Format *
-_evas_textblock_cursor_node_format_before_or_at_pos_get(const Evas_Textblock_Cursor *cur)
+_evas_textblock_cursor_node_format_before_or_at_pos_get(const Evas_Textblock_Cursor *cur, Eina_Bool legacy)
 {
    Evas_Object_Textblock_Node_Format *node, *pitr = NULL;
    Evas_Object_Textblock_Node_Format *itr;
@@ -7813,7 +7813,7 @@ _evas_textblock_cursor_node_format_before_or_at_pos_get(const Evas_Textblock_Cur
           }
         else if ((position + itr->offset) == cur->pos)
           {
-             return itr;
+             return legacy ? itr : pitr;
           }
         pitr = itr;
         position += itr->offset;
@@ -8192,7 +8192,7 @@ evas_textblock_cursor_format_next(Evas_Textblock_Cursor *cur)
    /* If the current node is a format node, just get the next if any,
     * if it's a text, get the current format node out of the text and return
     * the next format node if any. */
-   node = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur);
+   node = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, EINA_TRUE);
    node = _evas_textblock_node_format_last_at_off(node);
    if (!node)
      {
@@ -8230,7 +8230,7 @@ evas_textblock_cursor_format_prev(Evas_Textblock_Cursor *cur)
    node = evas_textblock_cursor_format_get(cur);
    if (!node)
      {
-        node = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur);
+        node = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, EINA_TRUE);
         if (node)
           {
              cur->node = node->text_node;
@@ -9471,7 +9471,7 @@ _evas_textblock_cursor_text_append(Eo *eo_obj,
    if (n)
      {
         Evas_Object_Textblock_Node_Format *nnode;
-        fnode = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur);
+        fnode = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, EINA_TRUE);
         fnode = _evas_textblock_node_format_last_at_off(fnode);
         /* find the node after the current in the same paragraph
          * either we find one and then take the next, or we try to get
@@ -9755,7 +9755,7 @@ _evas_textblock_cursor_format_append(Evas_Textblock_Cursor *cur,
    else
      {
         Evas_Object_Textblock_Node_Format *fmt;
-        fmt = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur);
+        fmt = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, EINA_TRUE);
         n->text_node = cur->node;
         if (!fmt)
           {
@@ -9932,7 +9932,7 @@ _evas_textblock_cursor_char_delete(Eo *eo_obj,
                }
           }
 
-        fmt2 = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur);
+        fmt2 = _evas_textblock_cursor_node_format_before_or_at_pos_get(cur, EINA_TRUE);
         fmt2 = _evas_textblock_node_format_last_at_off(fmt2);
         _evas_textblock_node_format_adjust_offset(o, cur->node, fmt2,
               -(ind - cur->pos));
