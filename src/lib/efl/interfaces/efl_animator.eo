@@ -4,9 +4,17 @@ struct Efl.Event.Animator_Tick {
    update_area: Eina.Rectangle; [[Area of the canvas that will be pushed to screen.]]
 }
 
-interface Efl.Animator {
+mixin Efl.Animator {
    legacy_prefix: null;
    eo_prefix: efl_animator;
+   methods {
+      linear_timeline {
+         params {
+	    @inout deadline: promise<double> *;
+	    @in target_time: double;
+	 }
+      }
+   }
    events {
       animator,tick: Efl.Event.Animator_Tick; [[Animator tick synchronized with screen vsync if possible.]]
    }
