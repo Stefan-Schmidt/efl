@@ -110,15 +110,6 @@ class Evas.Textblock (Evas.Object)
             ts: const(Evas.Textblock.Style)*; [[The style.]]
          }
       }
-      @property node_format_first {
-         get {
-            [[Gets the first format node.]]
-            legacy: evas_textblock_node_format_first_get;
-         }
-         values {
-            format: const(Evas.Textblock.Node_Format)*;
-         }
-      }
       @property size_formatted {
          get {
             [[Get the formatted width and height.
@@ -142,15 +133,6 @@ class Evas.Textblock (Evas.Object)
          values {
             w: Evas.Coord; [[The width of the object.]]
             h: Evas.Coord; [[The height of the object.]]
-         }
-      }
-      @property node_format_last {
-         get {
-            [[Gets the last format node.]]
-            legacy: evas_textblock_node_format_last_get;
-         }
-         values {
-            format: const(Evas.Textblock.Node_Format)*;
          }
       }
       @property cursor {
@@ -257,13 +239,6 @@ class Evas.Textblock (Evas.Object)
          ]]
          return: Evas.Textblock.Cursor *; [[The new cursor.]]
       }
-      node_format_list_get @const {
-         legacy: evas_textblock_node_format_list_get;
-         return: const(list<Evas.Object*>)*;
-         params {
-            @in anchor: const(char)*;
-         }
-      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
@@ -272,13 +247,6 @@ class Evas.Textblock (Evas.Object)
            @since 1.2
          ]]
          return: const(Evas.Textblock.Style)*; [[The style of the object.]]
-      }
-      node_format_remove_pair {
-         [[Remove a format node and its match.]]
-         legacy: evas_textblock_node_format_remove_pair;
-         params {
-            @in n: Evas.Textblock.Node_Format *;
-         }
       }
       clear {
          [[Clear the textblock object.

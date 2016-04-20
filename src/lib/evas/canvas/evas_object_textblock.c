@@ -7899,11 +7899,12 @@ evas_textblock_cursor_is_format(const Evas_Textblock_Cursor *cur)
       EINA_TRUE : EINA_FALSE;
 }
 
-EOLIAN static const Eina_List *
-_evas_textblock_node_format_list_get(const Eo *eo_obj, Evas_Textblock_Data *o, const char *anchor)
+EAPI const Eina_List *
+evas_textblock_node_format_list_get(const Evas_Object *eo_obj, const char *anchor)
 {
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
+   Evas_Textblock_Data *o = eo_data_scope_get(eo_obj, MY_CLASS);
    if (!strcmp(anchor, "a"))
      return o->anchors_a;
    else if (!strcmp(anchor, "item"))
@@ -7911,19 +7912,21 @@ _evas_textblock_node_format_list_get(const Eo *eo_obj, Evas_Textblock_Data *o, c
    return NULL;
 }
 
-EOLIAN static const Evas_Object_Textblock_Node_Format*
-_evas_textblock_node_format_first_get(Eo *eo_obj, Evas_Textblock_Data *o)
+EAPI const Evas_Object_Textblock_Node_Format*
+evas_textblock_node_format_first_get(const Evas_Object *eo_obj)
 {
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
+   Evas_Textblock_Data *o = eo_data_scope_get(eo_obj, MY_CLASS);
    evas_object_async_block(obj);
    return o->format_nodes;
 }
 
-EOLIAN static const Evas_Object_Textblock_Node_Format*
-_evas_textblock_node_format_last_get(Eo *eo_obj, Evas_Textblock_Data *o)
+EAPI const Evas_Object_Textblock_Node_Format*
+evas_textblock_node_format_last_get(const Evas_Object *eo_obj)
 {
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
+   Evas_Textblock_Data *o = eo_data_scope_get(eo_obj, MY_CLASS);
    return o->format_nodes ? _NODE_FORMAT(EINA_INLIST_GET(o->format_nodes)->last) : NULL;
 }
 
@@ -7941,8 +7944,8 @@ evas_textblock_node_format_prev_get(const Evas_Object_Textblock_Node_Format *n)
    return _NODE_FORMAT(EINA_INLIST_GET(n)->prev);
 }
 
-EOLIAN static void
-_evas_textblock_node_format_remove_pair(Eo *eo_obj, Evas_Textblock_Data *o, Evas_Object_Textblock_Node_Format *n)
+EAPI void
+evas_textblock_node_format_remove_pair(Evas_Object *eo_obj, Evas_Object_Textblock_Node_Format *n)
 {
    Evas_Object_Textblock_Node_Text *tnode1;
    Evas_Object_Textblock_Node_Format *fmt, *found_node = NULL;
@@ -7954,6 +7957,7 @@ _evas_textblock_node_format_remove_pair(Eo *eo_obj, Evas_Textblock_Data *o, Evas
 
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
+   Evas_Textblock_Data *o = eo_data_scope_get(eo_obj, MY_CLASS);
    do
      {
         const char *fstr = fmt->orig_format;
