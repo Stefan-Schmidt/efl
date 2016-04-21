@@ -254,6 +254,12 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
          }
       }
+      cursor_paragraph_last {
+         [[Sets the cursor to the end of the last text node.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to set.]]
+         }
+      }
       cursor_word_end {
          [[Moves the cursor to the end of the word under the cursor.
 
