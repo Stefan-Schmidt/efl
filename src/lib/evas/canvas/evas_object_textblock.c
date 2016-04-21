@@ -8430,8 +8430,15 @@ _evas_textblock_cursor_char_next(Eo *eo_obj, Evas_Textblock_Data *o EINA_UNUSED,
 EAPI Eina_Bool
 evas_textblock_cursor_char_prev(Evas_Textblock_Cursor *cur)
 {
+   return evas_obj_textblock_cursor_char_prev(cur->obj, cur);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_char_prev(Eo *eo_obj, Evas_Textblock_Data *o EINA_UNUSED,
+      Evas_Textblock_Cursor *cur)
+{
    if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node, EINA_FALSE);
 

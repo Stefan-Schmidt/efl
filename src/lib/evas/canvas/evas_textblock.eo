@@ -291,6 +291,13 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The moved cursor.]]
          }
       }
+      cursor_char_prev {
+         [[ Advances $cur one character backwards, if possible ]]
+         return: bool; [[$true on success, $false otherwise.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to advance.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
