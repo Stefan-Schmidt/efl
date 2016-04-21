@@ -7880,10 +7880,16 @@ _evas_textblock_cursor_new(const Eo *eo_obj, Evas_Textblock_Data *o)
 EAPI void
 evas_textblock_cursor_free(Evas_Textblock_Cursor *cur)
 {
+   evas_obj_textblock_cursor_free(cur->obj, cur);
+}
+
+EOLIAN static void
+_evas_textblock_cursor_free(Eo *eo_obj, Evas_Textblock_Data *o,
+         Evas_Textblock_Cursor *cur)
+{
    if (!cur) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
    if (cur == o->cursor) return;
    o->cursors = eina_list_remove(o->cursors, cur);
    free(cur);

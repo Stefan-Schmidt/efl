@@ -239,9 +239,18 @@ class Evas.Textblock (Evas.Object)
          ]]
          return: Evas.Textblock.Cursor *; [[The new cursor.]]
       }
+      cursor_free {
+         [[Free the cursor and unassociate it from the object.
+
+           Note: do not use it to free unassociated cursors.]]
+
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to free.]]
+         }
+      }
       cursor_word_end {
          [[Moves the cursor to the end of the word under the cursor.
-             
+
            @since 1.2
          ]]
          return: bool; [[$true on success, $false otherwise.]]
