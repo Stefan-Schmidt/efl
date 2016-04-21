@@ -8140,9 +8140,16 @@ _evas_textblock_cursor_paragraph_next(Eo *eo_obj,
 EAPI Eina_Bool
 evas_textblock_cursor_paragraph_prev(Evas_Textblock_Cursor *cur)
 {
+   return evas_obj_textblock_cursor_paragraph_prev(cur->obj, cur);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_paragraph_prev(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur)
+{
    Evas_Object_Textblock_Node_Text *node;
    if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node, EINA_FALSE);
    /* If the current node is a text node, just get the prev if any,
