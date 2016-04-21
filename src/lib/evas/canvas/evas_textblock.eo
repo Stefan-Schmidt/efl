@@ -248,6 +248,12 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor to free.]]
          }
       }
+      cursor_paragraph_first {
+         [[Sets the cursor to the start of the first text node.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+         }
+      }
       cursor_word_end {
          [[Moves the cursor to the end of the word under the cursor.
 
