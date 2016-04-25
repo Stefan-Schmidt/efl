@@ -9070,13 +9070,20 @@ evas_textblock_cursor_pos_get(const Evas_Textblock_Cursor *cur)
 EAPI void
 evas_textblock_cursor_pos_set(Evas_Textblock_Cursor *cur, int _pos)
 {
+   evas_obj_textblock_cursor_pos_set(cur->obj, cur, _pos);
+}
+
+EOLIAN static void
+_evas_textblock_cursor_pos_set(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
+      int _pos)
+{
    Evas_Object_Textblock_Node_Text *n;
    size_t pos;
 
    if (!cur) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    if (_pos < 0)
      {
