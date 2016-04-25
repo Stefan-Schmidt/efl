@@ -8561,16 +8561,22 @@ evas_textblock_cursor_line_char_first(Evas_Textblock_Cursor *cur)
 EAPI void
 evas_textblock_cursor_line_char_last(Evas_Textblock_Cursor *cur)
 {
+   evas_obj_textblock_cursor_line_char_last(cur->obj, cur);
+}
+
+EOLIAN static void
+_evas_textblock_cursor_line_char_last(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur)
+{
    Evas_Object_Textblock_Line *ln = NULL;
    Evas_Object_Textblock_Item *it = NULL;
 
    if (!cur) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
-   _relayout_if_needed(cur->obj, o);
+   _relayout_if_needed(eo_obj, o);
 
    _find_layout_item_match(cur, &ln, &it);
 
