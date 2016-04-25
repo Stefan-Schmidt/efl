@@ -364,6 +364,17 @@ class Evas.Textblock (Evas.Object)
             @in cur2: const(Evas.Textblock.Cursor)*; [[The second cursor.]]
          }
       }
+      cursor_copy {
+         [[Copies a given cursor to a destination cursor.
+
+           Makes $cur_dest point to the same place as $cur. Does nothing if
+           these are cursors for different textblock objects.
+         ]]
+         params {
+            @in cur_dest: Evas.Textblock.Cursor *; [[The destination cursor.]]
+            @in cur: const(Evas.Textblock.Cursor)*; [[The source cursor.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 

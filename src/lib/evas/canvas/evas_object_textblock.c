@@ -9194,10 +9194,18 @@ _evas_textblock_cursor_compare(Eo *eo_obj,
 EAPI void
 evas_textblock_cursor_copy(const Evas_Textblock_Cursor *cur, Evas_Textblock_Cursor *cur_dest)
 {
+   evas_obj_textblock_cursor_copy(cur_dest->obj, cur_dest, cur);
+}
+
+EOLIAN static void
+_evas_textblock_cursor_copy(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED,
+      Evas_Textblock_Cursor *cur_dest, const Evas_Textblock_Cursor *cur)
+{
    if (!cur) return;
    if (!cur_dest) return;
    if (cur->obj != cur_dest->obj) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    cur_dest->pos = cur->pos;
    cur_dest->node = cur->node;
