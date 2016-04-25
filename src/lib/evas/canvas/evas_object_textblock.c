@@ -9450,8 +9450,10 @@ _evas_textblock_invalidate_all(Evas_Textblock_Data *o)
      }
 }
 
-EAPI int
-evas_textblock_cursor_text_append(Evas_Textblock_Cursor *cur, const char *_text)
+EOLIAN static int
+_evas_textblock_cursor_text_append(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
+      const char *_text)
 {
    Evas_Object_Textblock_Node_Text *n;
    Evas_Object_Textblock_Node_Format *fnode = NULL;
@@ -9459,10 +9461,9 @@ evas_textblock_cursor_text_append(Evas_Textblock_Cursor *cur, const char *_text)
    int len = 0;
 
    if (!cur) return 0;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    text = eina_unicode_utf8_to_unicode(_text, &len);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    n = cur->node;
    if (n)
@@ -9522,6 +9523,12 @@ evas_textblock_cursor_text_append(Evas_Textblock_Cursor *cur, const char *_text)
    if (!o->cursor->node)
       o->cursor->node = o->text_nodes;
    return len;
+}
+
+EAPI int
+evas_textblock_cursor_text_append(Evas_Textblock_Cursor *cur, const char *_text)
+{
+   return evas_obj_textblock_cursor_text_append(cur->obj, cur, _text);
 }
 
 EAPI int
