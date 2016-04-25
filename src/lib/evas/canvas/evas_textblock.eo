@@ -306,6 +306,12 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
          }
       }
+      cursor_paragraph_char_first {
+         [[Goes to the first char in the node the cursor is pointing on.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
