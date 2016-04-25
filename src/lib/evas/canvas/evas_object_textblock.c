@@ -9156,11 +9156,19 @@ _evas_textblock_cursor_line_set(Eo *eo_obj,
 EAPI int
 evas_textblock_cursor_compare(const Evas_Textblock_Cursor *cur1, const Evas_Textblock_Cursor *cur2)
 {
+   return evas_obj_textblock_cursor_compare(cur1->obj, cur1, cur2);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_compare(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED,
+      const Evas_Textblock_Cursor *cur1, const Evas_Textblock_Cursor *cur2)
+{
    Eina_Inlist *l1, *l2;
 
    if (!cur1) return 0;
    if (!cur2) return 0;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur1->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    if (cur1->obj != cur2->obj) return 0;
    if ((!cur1->node) || (!cur2->node)) return 0;

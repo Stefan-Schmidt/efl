@@ -352,6 +352,18 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
          }
       }
+      cursor_compare {
+         [[Compares two cursors.
+
+           Note that 0 will be returned if they are cursors of different
+           textblock objects.
+         ]]
+         return: int; [[-1 if cur1 < cur2, 0 if cur1 == cur2, 1 otherwise.]]
+         params {
+            @in cur1: const(Evas.Textblock.Cursor)*; [[The first cursor.]]
+            @in cur2: const(Evas.Textblock.Cursor)*; [[The second cursor.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
