@@ -8477,10 +8477,17 @@ _evas_textblock_cursor_paragraph_char_first(Eo *eo_obj,
 EAPI void
 evas_textblock_cursor_paragraph_char_last(Evas_Textblock_Cursor *cur)
 {
+   evas_obj_textblock_cursor_paragraph_char_last(cur->obj, cur);
+}
+
+EOLIAN static void
+_evas_textblock_cursor_paragraph_char_last(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur)
+{
    int ind;
 
    if (!cur) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node);
    ind = eina_ustrbuf_length_get(cur->node->unicode);
