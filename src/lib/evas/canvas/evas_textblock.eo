@@ -413,6 +413,16 @@ class Evas.Textblock (Evas.Object)
             @in cur2: Evas.Textblock.Cursor *; [[Range end position.]]
          }
       }
+      cursor_paragraph_text_get {
+         [[Returns the text of the paragraph cur points to.
+
+           The text is returned as markup.
+         ]]
+         return: const(char)*; [[The markup of the paragraph point by $cur.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor we query.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
