@@ -406,6 +406,13 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor pointing to the current location.]]
          }
       }
+      cursor_range_delete {
+         [[Delete the range between given cursors.]]
+         params {
+            @in cur1: Evas.Textblock.Cursor *; [[Range start position.]]
+            @in cur2: Evas.Textblock.Cursor *; [[Range end position.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 

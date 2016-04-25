@@ -9964,8 +9964,10 @@ evas_textblock_cursor_char_delete(Evas_Textblock_Cursor *cur)
    evas_obj_textblock_cursor_char_delete(cur->obj, cur);
 }
 
-EAPI void
-evas_textblock_cursor_range_delete(Evas_Textblock_Cursor *cur1, Evas_Textblock_Cursor *cur2)
+EOLIAN static void
+_evas_textblock_cursor_range_delete(Eo *eo_obj,
+      Evas_Textblock_Data *o,
+      Evas_Textblock_Cursor *cur1, Evas_Textblock_Cursor *cur2)
 {
    Evas_Object_Textblock_Node_Format *fnode = NULL;
    Evas_Object_Textblock_Node_Text *n1, *n2;
@@ -9974,9 +9976,8 @@ evas_textblock_cursor_range_delete(Evas_Textblock_Cursor *cur1, Evas_Textblock_C
    if (!cur1 || !cur1->node) return;
    if (!cur2 || !cur2->node) return;
    if (cur1->obj != cur2->obj) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur1->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur1->obj, MY_CLASS);
    if (evas_textblock_cursor_compare(cur1, cur2) > 0)
      {
         Evas_Textblock_Cursor *tc;
@@ -10068,6 +10069,11 @@ evas_textblock_cursor_range_delete(Evas_Textblock_Cursor *cur1, Evas_Textblock_C
    _evas_textblock_changed(o, cur1->obj);
 }
 
+EAPI void
+evas_textblock_cursor_range_delete(Evas_Textblock_Cursor *cur1, Evas_Textblock_Cursor *cur2)
+{
+   evas_obj_textblock_cursor_range_delete(cur1->obj, cur1, cur2);
+}
 
 EAPI char *
 evas_textblock_cursor_content_get(const Evas_Textblock_Cursor *cur)
