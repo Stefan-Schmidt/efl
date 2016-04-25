@@ -8530,19 +8530,19 @@ _cursor_line_first_char_get(Evas_Object_Textblock_Line *ln,
      }
 }
 
-EAPI void
-evas_textblock_cursor_line_char_first(Evas_Textblock_Cursor *cur)
+EOLIAN static void
+_evas_textblock_cursor_line_char_first(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur)
 {
    Evas_Object_Textblock_Line *ln = NULL;
    Evas_Object_Textblock_Item *it = NULL;
 
    if (!cur) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
-   _relayout_if_needed(cur->obj, o);
+   _relayout_if_needed(eo_obj, o);
 
    /* We don't actually need 'it', but it needs to be non NULL */
    _find_layout_item_match(cur, &ln, &it);
@@ -8550,6 +8550,12 @@ evas_textblock_cursor_line_char_first(Evas_Textblock_Cursor *cur)
    if (!ln) return;
 
    _cursor_line_first_char_get(ln, cur, o);
+}
+
+EAPI void
+evas_textblock_cursor_line_char_first(Evas_Textblock_Cursor *cur)
+{
+   evas_obj_textblock_cursor_line_char_first(cur->obj, cur);
 }
 
 EAPI void
