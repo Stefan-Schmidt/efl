@@ -9881,17 +9881,17 @@ evas_textblock_cursor_format_prepend(Evas_Textblock_Cursor *cur, const char *for
    return is_visible;
 }
 
-EAPI void
-evas_textblock_cursor_char_delete(Evas_Textblock_Cursor *cur)
+EOLIAN static void
+_evas_textblock_cursor_char_delete(Eo *eo_obj,
+      Evas_Textblock_Data *o, Evas_Textblock_Cursor *cur)
 {
    Evas_Object_Textblock_Node_Text *n, *n2;
    const Eina_Unicode *text;
    int chr, ind, ppos;
 
    if (!cur || !cur->node) return;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
    n = cur->node;
 
    text = eina_ustrbuf_string_get(n->unicode);
@@ -9956,6 +9956,12 @@ evas_textblock_cursor_char_delete(Evas_Textblock_Cursor *cur)
    _evas_textblock_cursors_update_offset(cur, n, ppos, -(ind - ppos));
    _evas_textblock_changed(o, cur->obj);
    cur->node->dirty = EINA_TRUE;
+}
+
+EAPI void
+evas_textblock_cursor_char_delete(Evas_Textblock_Cursor *cur)
+{
+   evas_obj_textblock_cursor_char_delete(cur->obj, cur);
 }
 
 EAPI void

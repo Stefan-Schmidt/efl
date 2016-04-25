@@ -397,6 +397,15 @@ class Evas.Textblock (Evas.Object)
             @in text: const(char)*; [[The text to add.]]
          }
       }
+      cursor_char_delete {
+         [[Delete the character at the location of the cursor.
+
+           If there's a format pointing to this position, delete it as well.
+         ]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor pointing to the current location.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
