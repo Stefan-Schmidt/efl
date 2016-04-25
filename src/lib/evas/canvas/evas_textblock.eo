@@ -255,6 +255,13 @@ class Evas.Textblock (Evas.Object)
             @in pos: int; [[The pos to set.]]
          }
       }
+      cursor_pos_get {
+         [[Gets the cursor position.]]
+         return: int; [[The current position of $cur in the text.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to get the position from.]]
+         }
+      }
       cursor_paragraph_first {
          [[Sets the cursor to the start of the first text node.]]
          params {

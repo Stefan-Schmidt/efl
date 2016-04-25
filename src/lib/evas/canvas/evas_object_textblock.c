@@ -9050,14 +9050,20 @@ _evas_textblock_node_format_pos_get(const Evas_Object_Textblock_Node_Format *fmt
 EAPI int
 evas_textblock_cursor_pos_get(const Evas_Textblock_Cursor *cur)
 {
+   return evas_obj_textblock_cursor_pos_get(cur->obj, cur);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_pos_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur)
+{
    Evas_Object_Textblock_Node_Text *n;
    size_t npos = 0;
 
    if (!cur) return -1;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node, 0);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
    n = o->text_nodes;
    while (n != cur->node)
      {
