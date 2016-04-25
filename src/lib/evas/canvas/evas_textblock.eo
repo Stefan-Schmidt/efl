@@ -386,6 +386,17 @@ class Evas.Textblock (Evas.Object)
             @in text: const(char)*; [[The text to add.]]
          }
       }
+      cursor_text_prepend {
+         [[Adds text to the current cursor position and sets the cursor to
+           *after* the start of the text just added.
+           See also @.cursor_text_append.
+         ]]
+         return: int; [[The length of the added text.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to where to add text at.]]
+            @in text: const(char)*; [[The text to add.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
