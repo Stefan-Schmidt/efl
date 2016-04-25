@@ -9130,17 +9130,22 @@ _evas_textblock_cursor_pos_set(Eo *eo_obj,
 EAPI Eina_Bool
 evas_textblock_cursor_line_set(Evas_Textblock_Cursor *cur, int line)
 {
+   return evas_obj_textblock_cursor_line_set(cur->obj, cur, line);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_line_set(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur, int line)
+{
    Evas_Object_Textblock_Line *ln;
 
    if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
 
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
+   _relayout_if_needed(eo_obj, o);
 
-   _relayout_if_needed(cur->obj, o);
-
-   ln = _find_layout_line_num(cur->obj, line);
+   ln = _find_layout_line_num(eo_obj, line);
    if (!ln) return EINA_FALSE;
 
    _cursor_line_first_char_get(ln, cur, o);

@@ -332,6 +332,14 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
          }
       }
+      cursor_line_set {
+         [[Sets the cursor position to the start of a given line.]]
+         return: bool; [[$true on success, $false otherwise.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+            @in line: int; [[The line number to which the cursor is set.]]
+         }
+      }
       cursor_line_char_first {
          [[Go to the start of the current line.]]
          params {
