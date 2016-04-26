@@ -10078,8 +10078,16 @@ evas_textblock_cursor_range_delete(Evas_Textblock_Cursor *cur1, Evas_Textblock_C
 EAPI char *
 evas_textblock_cursor_content_get(const Evas_Textblock_Cursor *cur)
 {
+   if (!cur) return NULL;
+   return evas_obj_textblock_cursor_content_get(cur->obj, cur);
+}
+
+EOLIAN static char *
+_evas_textblock_cursor_content_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur)
+{
    if (!cur || !cur->node) return NULL;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    if (evas_textblock_cursor_format_is_visible_get(cur))
      {

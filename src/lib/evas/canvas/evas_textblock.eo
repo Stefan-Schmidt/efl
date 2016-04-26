@@ -470,6 +470,19 @@ class Evas.Textblock (Evas.Object)
             the text. Markup - in textblock markup. Plain - UTF8.]]
          }
       }
+      cursor_content_get {
+         [[Returns the content in the given cursor's position
+
+           The content is a representation of the actual content: if it is a
+           visible format, then it will return a markup string (e.g. "<ps>"); if
+           it is a unicode character, then it will return the UTF-8 encoding of
+           this character.
+         ]]
+         return: own(char*); [[The representation of the content at $cur.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
