@@ -483,6 +483,31 @@ class Evas.Textblock (Evas.Object)
             @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
          }
       }
+      cursor_geometry_bidi_get {
+         [[Returns the geometry of two cursors ("split cursor"), if logical cursor is
+           between LTR/RTL text, also considering paragraph direction.
+           Upper cursor is shown for the text of the same direction as paragraph,
+           lower cursor - for opposite.
+
+           Split cursor geometry is valid only  in '|' cursor mode.
+           In this case $true is returned and cx2, cy2, cw2, ch2 are set,
+           otherwise it behaves like cursor_geometry_get.
+           @since 1.8
+         ]]
+         return: bool; [[$true for split cursor, $false otherwise.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
+            @out cx: int; [[the x of the cursor (or upper cursor).]]
+            @out cy: int; [[the y of the cursor (or upper cursor).]]
+            @out cw: int; [[the width of the cursor (or upper cursor).]]
+            @out ch: int; [[the height of the cursor (or upper cursor).]]
+            @out cx2: int; [[the x of the lower cursor.]]
+            @out cy2: int; [[the y of the lower cursor.]]
+            @out cw2: int; [[the width of the lower cursor.]]
+            @out ch2: int; [[the height of the lower cursor.]]
+            @in ctype: Evas.Textblock.Cursor.Type; [[the type of the cursor.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 

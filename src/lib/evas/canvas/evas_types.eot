@@ -82,6 +82,16 @@ enum Evas.BiDi_Direction {
    inherit
 }
 
+enum Evas.Textblock.Cursor.Type
+{
+   [[Cursor type for Evas Textblock.]]
+   legacy: Evas_Textblock_Cursor;
+
+   under, [[ cursor type is under. ]]
+   before [[ cursor type is before. ]]
+}
+
+
 enum Evas.Text_Style_Type {
    [[Types of styles to be applied on text objects. The
      EVAS_TEXT_STYLE_SHADOW_DIRECTION_* ones are to be ORed together with

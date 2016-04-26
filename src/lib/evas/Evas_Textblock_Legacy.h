@@ -48,16 +48,6 @@ EAPI const Evas_Textblock_Node_Format *evas_textblock_node_format_last_get(const
 typedef struct _Evas_Textblock_Cursor             Evas_Textblock_Cursor;
 
 /**
- * Cursor type for evas textblock.
- */
-typedef enum _Evas_Textblock_Cursor_Type
-{
-   EVAS_TEXTBLOCK_CURSOR_UNDER, /**< cursor type is under */
-   EVAS_TEXTBLOCK_CURSOR_BEFORE /**< cursor type is before */
-} Evas_Textblock_Cursor_Type;
-
-
-/**
  * Free the cursor and unassociate it from the object.
  * @note do not use it to free unassociated cursors.
  *

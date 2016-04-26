@@ -10532,10 +10532,20 @@ _find_layout_line_by_item(Evas_Object_Textblock_Paragraph *par, Evas_Object_Text
 EAPI Eina_Bool
 evas_textblock_cursor_geometry_bidi_get(const Evas_Textblock_Cursor *cur, Evas_Coord *cx, Evas_Coord *cy, Evas_Coord *cw, Evas_Coord *ch, Evas_Coord *cx2, Evas_Coord *cy2, Evas_Coord *cw2, Evas_Coord *ch2, Evas_Textblock_Cursor_Type ctype)
 {
+   return evas_obj_textblock_cursor_geometry_bidi_get(cur->obj, cur, cx, cy, cw, ch,
+         cx2, cy2, cw2, ch2, ctype);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_geometry_bidi_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur,
+      Evas_Coord *cx, Evas_Coord *cy, Evas_Coord *cw, Evas_Coord *ch,
+      Evas_Coord *cx2, Evas_Coord *cy2, Evas_Coord *cw2, Evas_Coord *ch2,
+      Evas_Textblock_Cursor_Type ctype)
+{
    if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    _relayout_if_needed(cur->obj, o);
 
