@@ -3,6 +3,16 @@ struct @extern Evas.Textblock.Style;
 struct @extern Evas.Textblock.Annotation;
 struct Evas.Textblock.Node_Format;
 
+enum @extern Evas.Textblock.Text_Type
+{
+   [[Text type for evas textblock.]]
+   legacy: Evas_Textblock_Text;
+
+   raw, [[Textblock text of type raw.]]
+   plain, [[Textblock text of type plain.]]
+   markup [[Textblock text of type markup.]]
+}
+
 class Evas.Textblock (Evas.Object)
 {
    legacy_prefix: evas_object_textblock;
@@ -448,6 +458,16 @@ class Evas.Textblock (Evas.Object)
          params {
             @in start: Evas.Textblock.Cursor *; [[Range start position.]]
             @in end: Evas.Textblock.Cursor *; [[Range end position.]]
+         }
+      }
+      cursor_range_text_get {
+         [[Returns the text in the range between $cur1 and $cur2.]]
+         return: own(char*); [[The text in the given range.]]
+         params {
+            @in cur1: const(Evas.Textblock.Cursor)*; [[Range start position.]]
+            @in cur2: const(Evas.Textblock.Cursor)*; [[Range end position.]]
+            @in format: Evas.Textblock.Text_Type; [[The form on which to return
+            the text. Markup - in textblock markup. Plain - UTF8.]]
          }
       }
       style_user_peek @const {

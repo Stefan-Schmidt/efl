@@ -10349,13 +10349,23 @@ evas_textblock_cursor_range_formats_get(const Evas_Textblock_Cursor *cur1, const
 EAPI char *
 evas_textblock_cursor_range_text_get(const Evas_Textblock_Cursor *cur1, const Evas_Textblock_Cursor *cur2, Evas_Textblock_Text_Type format)
 {
+   if (!cur1 || !cur2) return NULL;
+   return evas_obj_textblock_cursor_range_text_get(cur1->obj, cur1, cur2, format);
+}
+
+EOLIAN static char *
+_evas_textblock_cursor_range_text_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED,
+      const Evas_Textblock_Cursor *cur1, const Evas_Textblock_Cursor *cur2,
+      Evas_Textblock_Text_Type format)
+{
    Evas_Object_Protected_Data *obj;
 
    if (!cur1 || !cur1->node) return NULL;
    if (!cur2 || !cur2->node) return NULL;
    if (cur1->obj != cur2->obj) return NULL;
 
-   obj = eo_data_scope_get(cur1->obj, EVAS_OBJECT_CLASS);
+   obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    if (format == EVAS_TEXTBLOCK_TEXT_MARKUP)
       return _evas_textblock_cursor_range_text_markup_get(cur1, cur2);

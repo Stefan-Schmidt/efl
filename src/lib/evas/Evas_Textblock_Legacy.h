@@ -5,6 +5,16 @@
 typedef struct _Evas_Textblock_Node_Format Evas_Textblock_Node_Format;
 
 /**
+ * Text type for evas textblock.
+ */
+typedef enum _Evas_Textblock_Text_Type
+{
+   EVAS_TEXTBLOCK_TEXT_RAW, /**< textblock text of type raw */
+   EVAS_TEXTBLOCK_TEXT_PLAIN, /**< textblock text of type plain */
+   EVAS_TEXTBLOCK_TEXT_MARKUP /**< textblock text of type markup */
+} Evas_Textblock_Text_Type;
+
+/**
  * @brief Remove a format node and its match.
  *
  * @param[in] n
