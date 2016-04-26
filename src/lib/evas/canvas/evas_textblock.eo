@@ -508,6 +508,30 @@ class Evas.Textblock (Evas.Object)
             @in ctype: Evas.Textblock.Cursor.Type; [[the type of the cursor.]]
          }
       }
+      cursor_geometry_get {
+         [[Returns the geometry of the cursor. Depends on the type of cursor
+           requested. This should be used instead of char_geometry_get because
+           there are weird special cases with BiDi text.  in '_' cursor
+           mode (i.e a line below the char) it's the same as char_geometry
+           get, except for the case of the last char of a line which
+           depends on the paragraph direction.
+
+           in '|' cursor mode (i.e a line between two chars) it is very
+           variable.  For example consider the following visual string:
+           "abcCBA" (ABC are rtl chars), a cursor pointing on A should actually
+           draw a '|' between the c and the C.
+         ]]
+         return: int; [[line number of the char on success, -1 on error.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
+            @out cx: int; [[the x of the cursor (or upper cursor).]]
+            @out cy: int; [[the y of the cursor (or upper cursor).]]
+            @out cw: int; [[the width of the cursor (or upper cursor).]]
+            @out ch: int; [[the height of the cursor (or upper cursor).]]
+            @out dir: Evas.BiDi_Direction; [[the direction of the cursor, can be NULL.]]
+            @in ctype: Evas.Textblock.Cursor.Type; [[the type of the cursor.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
