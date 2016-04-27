@@ -11032,14 +11032,22 @@ _evas_textblock_cursor_visible_range_get(Eo *eo_obj,
 EAPI Eina_Bool
 evas_textblock_cursor_char_coord_set(Evas_Textblock_Cursor *cur, Evas_Coord x, Evas_Coord y)
 {
+   if (!cur) return EINA_FALSE;
+   return evas_obj_textblock_cursor_char_coord_set(cur->obj, cur, x, y);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_char_coord_set(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
+      Evas_Coord x, Evas_Coord y)
+{
    Evas_Object_Textblock_Paragraph *found_par;
    Evas_Object_Textblock_Line *ln;
    Evas_Object_Textblock_Item *it = NULL;
 
    if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    _relayout_if_needed(cur->obj, o);
 
@@ -11156,13 +11164,21 @@ evas_textblock_cursor_char_coord_set(Evas_Textblock_Cursor *cur, Evas_Coord x, E
 EAPI int
 evas_textblock_cursor_line_coord_set(Evas_Textblock_Cursor *cur, Evas_Coord y)
 {
+   if (!cur) return -1;
+   return evas_obj_textblock_cursor_line_coord_set(cur->obj, cur, y);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_line_coord_set(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, Evas_Textblock_Cursor *cur,
+      Evas_Coord y)
+{
    Evas_Object_Textblock_Paragraph *found_par;
    Evas_Object_Textblock_Line *ln;
 
    if (!cur) return -1;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    _relayout_if_needed(cur->obj, o);
 

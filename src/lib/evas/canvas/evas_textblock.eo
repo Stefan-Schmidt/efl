@@ -565,6 +565,23 @@ class Evas.Textblock (Evas.Object)
             @out ch: int; [[the h of the line.]]
          }
       }
+      cursor_char_coord_set {
+         [[Set the position of the cursor according to the X and Y coordinates.]]
+         return: bool; [[$true on success, $false otherwise.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to be set.]]
+            @in x: Evas.Coord; [[x coord to set by.]]
+            @in y: Evas.Coord; [[y coord to set by.]]
+         }
+      }
+      cursor_line_coord_set {
+         [[Set the cursor position according to the y coord.]]
+         return: int; [[line number on success, -1 otherwise.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to be set.]]
+            @in y: Evas.Coord; [[y coord to set by.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
