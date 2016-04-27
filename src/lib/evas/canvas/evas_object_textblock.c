@@ -10942,13 +10942,22 @@ _evas_textblock_cursor_char_geometry_get(Eo *eo_obj,
 }
 
 EAPI int
-evas_textblock_cursor_pen_geometry_get(const Evas_Textblock_Cursor *cur, Evas_Coord *cx, Evas_Coord *cy, Evas_Coord *cw, Evas_Coord *ch)
+evas_textblock_cursor_pen_geometry_get(const Evas_Textblock_Cursor *cur, Evas_Coord *cpen_x, Evas_Coord *cy, Evas_Coord *cadv, Evas_Coord *ch)
 {
    if (!cur) return -1;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   return evas_obj_textblock_cursor_pen_geometry_get(cur->obj, cur, cpen_x, cy, cadv, ch);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_pen_geometry_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur,
+      Evas_Coord *cpen_x, Evas_Coord *cy, Evas_Coord *cadv, Evas_Coord *ch)
+{
+   if (!cur) return -1;
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    return _evas_textblock_cursor_char_pen_geometry_common_get(
-         ENFN->font_pen_coords_get, cur, cx, cy, cw, ch);
+         ENFN->font_pen_coords_get, cur, cpen_x, cy, cadv, ch);
 }
 
 EAPI int
