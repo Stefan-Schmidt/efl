@@ -10963,14 +10963,22 @@ _evas_textblock_cursor_pen_geometry_get(Eo *eo_obj,
 EAPI int
 evas_textblock_cursor_line_geometry_get(const Evas_Textblock_Cursor *cur, Evas_Coord *cx, Evas_Coord *cy, Evas_Coord *cw, Evas_Coord *ch)
 {
+   if (!cur) return -1;
+   return evas_obj_textblock_cursor_line_geometry_get(cur->obj, cur, cx, cy, cw, ch);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_line_geometry_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur,
+      Evas_Coord *cx, Evas_Coord *cy, Evas_Coord *cw, Evas_Coord *ch)
+{
    Evas_Object_Textblock_Line *ln = NULL;
    Evas_Object_Textblock_Item *it = NULL;
    int x, y, w, h;
 
    if (!cur) return -1;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur->obj, MY_CLASS);
 
    _relayout_if_needed(cur->obj, o);
 
