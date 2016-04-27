@@ -13,6 +13,15 @@ enum @extern Evas.Textblock.Text_Type
    markup [[Textblock text of type markup.]]
 }
 
+struct Evas_Textblock_Rectangle
+{
+   [[Rectangle that represents some geometry in this object.]]
+   x: Evas.Coord; [[rectangle's x coords.]]
+   y: Evas.Coord; [[rectangle's y coords.]]
+   w: Evas.Coord; [[rectangle's width.]]
+   h: Evas.Coord; [[rectangle's height.]]
+}
+
 class Evas.Textblock (Evas.Object)
 {
    legacy_prefix: evas_object_textblock;
@@ -563,6 +572,14 @@ class Evas.Textblock (Evas.Object)
             @out cy: int; [[the y of the line.]]
             @out cw: int; [[the w of the line.]]
             @out ch: int; [[the h of the line.]]
+         }
+      }
+      cursor_range_geometry_get {
+         [[Get the geometry of a range.]]
+         return: list<Evas.Textblock.Rectangle *> *; [[List of rectangles representing the range.]]
+         params {
+            @in cur1: const(Evas.Textblock.Cursor)*; [[one side of the range.]]
+            @in cur2: const(Evas.Textblock.Cursor)*; [[other size of the range.]]
          }
       }
       cursor_char_coord_set {

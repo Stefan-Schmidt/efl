@@ -11707,6 +11707,15 @@ evas_textblock_cursor_range_simple_geometry_get(const Evas_Textblock_Cursor *cur
 EAPI Eina_List *
 evas_textblock_cursor_range_geometry_get(const Evas_Textblock_Cursor *cur1, const Evas_Textblock_Cursor *cur2)
 {
+   if (!cur1 || !cur2) return NULL;
+   return evas_obj_textblock_cursor_range_geometry_get(cur1->obj, cur1, cur2);
+}
+
+EOLIAN static Eina_List *
+_evas_textblock_cursor_range_geometry_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED,
+      const Evas_Textblock_Cursor *cur1, const Evas_Textblock_Cursor *cur2)
+{
    Evas_Object_Textblock_Line *ln1, *ln2;
    Evas_Object_Textblock_Item *it1, *it2;
    Eina_List *rects = NULL;
@@ -11715,9 +11724,8 @@ evas_textblock_cursor_range_geometry_get(const Evas_Textblock_Cursor *cur1, cons
    if (!cur1 || !cur1->node) return NULL;
    if (!cur2 || !cur2->node) return NULL;
    if (cur1->obj != cur2->obj) return NULL;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur1->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
-   Evas_Textblock_Data *o = eo_data_scope_get(cur1->obj, MY_CLASS);
 
    _relayout_if_needed(cur1->obj, o);
 

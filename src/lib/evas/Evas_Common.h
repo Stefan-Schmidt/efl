@@ -3078,12 +3078,6 @@ typedef struct _Evas_Textblock_Annotation         Evas_Textblock_Annotation;
  */
 typedef struct _Evas_Textblock_Node_Format Evas_Object_Textblock_Node_Format;
 
-typedef struct _Evas_Textblock_Rectangle          Evas_Textblock_Rectangle;
-struct _Evas_Textblock_Rectangle
-{
-   Evas_Coord x, y, w, h;
-};
-
 /**
  * Returns the unescaped version of escape.
  * @param escape the string to be escaped
