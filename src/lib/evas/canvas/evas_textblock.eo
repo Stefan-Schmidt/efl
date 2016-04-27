@@ -532,6 +532,17 @@ class Evas.Textblock (Evas.Object)
             @in ctype: Evas.Textblock.Cursor.Type; [[the type of the cursor.]]
          }
       }
+      cursor_char_geometry_get {
+         [[Returns the geometry of the char at cur.]]
+         return: int; [[line number on success, -1 otherwise.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor) *; [[the position of the char.]]
+            @out cx: int; [[the x of the char.]]
+            @out cy: int; [[the y of the char.]]
+            @out cw: int; [[the w of the char.]]
+            @out ch: int; [[the h of the char.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
