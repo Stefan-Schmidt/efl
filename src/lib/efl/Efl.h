@@ -125,6 +125,7 @@ static inline void efl_gfx_color16_type_set(Efl_Gfx_Color *color,
 #include "interfaces/efl_pack_grid.eo.h"
 
 /* Input events */
+#include "interfaces/efl_event_types.eot.h"
 #include "interfaces/efl_input_device.eo.h"
 //#include "interfaces/efl_input_state.eo.h"
 #include "interfaces/efl_event.eo.h"
@@ -134,6 +135,7 @@ static inline void efl_gfx_color16_type_set(Efl_Gfx_Color *color,
 
 #ifndef EFL_NOLEGACY_API_SUPPORT
 #include "interfaces/efl_gfx_types.eot.h"
+#include "interfaces/efl_event_types.eot.h"
 #include "interfaces/efl_gfx_fill.eo.legacy.h"
 #include "interfaces/efl_gfx.eo.legacy.h"
 #include "interfaces/efl_image.eo.legacy.h"
