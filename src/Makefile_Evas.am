@@ -97,6 +97,7 @@ lib/evas/Evas.h \
 lib/evas/Evas_Common.h \
 lib/evas/Evas_Eo.h \
 lib/evas/Evas_Legacy.h \
+lib/evas/Evas_Textblock_Legacy.h \
 lib/evas/Evas_GL.h \
 lib/evas/Evas_Loader.h
 
