@@ -260,6 +260,13 @@ class Evas.Textblock (Evas.Object)
             @in cur: Evas.Textblock.Cursor *; [[The cursor to set.]]
          }
       }
+      cursor_paragraph_next {
+         [[Advances to the start of the next text node.]]
+         return: bool; [[$true on success, $false otherwise.]]
+         params {
+            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+         }
+      }
       cursor_word_end {
          [[Moves the cursor to the end of the word under the cursor.
 
