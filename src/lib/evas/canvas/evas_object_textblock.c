@@ -10397,9 +10397,16 @@ _evas_textblock_cursor_paragraph_text_get(Eo *eo_obj,
 EAPI int
 evas_textblock_cursor_paragraph_text_length_get(const Evas_Textblock_Cursor *cur)
 {
+   return evas_obj_textblock_cursor_paragraph_text_length_get(cur->obj, cur);
+}
+
+EOLIAN static int
+_evas_textblock_cursor_paragraph_text_length_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur)
+{
    int len;
    if (!cur) return -1;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_NULL_CHECK(cur->node, -1);
    len = eina_ustrbuf_length_get(cur->node->unicode);

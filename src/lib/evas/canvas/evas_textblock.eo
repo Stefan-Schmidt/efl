@@ -423,6 +423,18 @@ class Evas.Textblock (Evas.Object)
             @in cur: const(Evas.Textblock.Cursor)*; [[The cursor we query.]]
          }
       }
+      cursor_paragraph_text_length_get {
+         [[Returns the length of the paragraph.
+
+          The paragraph we query is pointed by $cur.
+          Using this is cheaper the eina_unicode_strlen().
+         ]]
+         return: int; [[The length of the paragraph on success, -1 otehrwise.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor which we query
+            the paragraph with.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
