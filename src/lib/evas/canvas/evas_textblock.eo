@@ -435,6 +435,21 @@ class Evas.Textblock (Evas.Object)
             the paragraph with.]]
          }
       }
+      cursor_visible_range_get {
+         [[Return the currently visible range.
+
+           The given $start and $end cursor act like an out-variables here,
+           as these are set to the positions of the start and the end of the
+           visible range in the text, respectively.
+
+           @since 1.1.
+         ]]
+         return: bool; [[$true on success, $false otherwise.]]
+         params {
+            @in start: Evas.Textblock.Cursor *; [[Range start position.]]
+            @in end: Evas.Textblock.Cursor *; [[Range end position.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 

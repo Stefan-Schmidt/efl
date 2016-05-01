@@ -10941,9 +10941,16 @@ evas_textblock_cursor_line_geometry_get(const Evas_Textblock_Cursor *cur, Evas_C
 EAPI Eina_Bool
 evas_textblock_cursor_visible_range_get(Evas_Textblock_Cursor *start, Evas_Textblock_Cursor *end)
 {
+   return evas_obj_textblock_cursor_visible_range_get(start->obj, start, end);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_visible_range_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED,
+      Evas_Textblock_Cursor *start, Evas_Textblock_Cursor *end)
+{
    Evas *eo_e;
    Evas_Coord cy, ch;
-   Evas_Object *eo_obj = start->obj;
    Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
    TB_HEAD_RETURN(EINA_FALSE);
