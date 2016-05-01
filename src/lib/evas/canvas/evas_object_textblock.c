@@ -11830,10 +11830,18 @@ evas_textblock_cursor_format_item_geometry_get(const Evas_Textblock_Cursor *cur,
 EAPI Eina_Bool
 evas_textblock_cursor_eol_get(const Evas_Textblock_Cursor *cur)
 {
+   if (!cur) return EINA_FALSE;
+   return evas_obj_textblock_cursor_eol_get(cur->obj, cur);
+}
+
+EOLIAN static Eina_Bool
+_evas_textblock_cursor_eol_get(Eo *eo_obj,
+      Evas_Textblock_Data *o EINA_UNUSED, const Evas_Textblock_Cursor *cur)
+{
    Eina_Bool ret = EINA_FALSE;
    Evas_Textblock_Cursor cur2;
    if (!cur) return EINA_FALSE;
-   Evas_Object_Protected_Data *obj = eo_data_scope_get(cur->obj, EVAS_OBJECT_CLASS);
+   Evas_Object_Protected_Data *obj = eo_data_scope_get(eo_obj, EVAS_OBJECT_CLASS);
    evas_object_async_block(obj);
 
    cur2.obj = cur->obj;

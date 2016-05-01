@@ -596,6 +596,13 @@ class Evas.Textblock (Evas.Object)
             @in cur2: const(Evas.Textblock.Cursor)*; [[other size of the range.]]
          }
       }
+      cursor_eol_get {
+         [[Check if the cursor points to the end of the line.]]
+         return: bool; [[$true if $cur is at end of line , $false otherwise.]]
+         params {
+            @in cur: const(Evas.Textblock.Cursor)*; [[Cursor to query.]]
+         }
+      }
       cursor_char_coord_set {
          [[Set the position of the cursor according to the X and Y coordinates.]]
          return: bool; [[$true on success, $false otherwise.]]
