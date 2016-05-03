@@ -491,6 +491,7 @@ struct _Evas_Textblock_Annotation
    EINA_INLIST;
    Evas_Object                       *obj;
    Evas_Object_Textblock_Node_Format *start_node, *end_node;
+   Eina_Bool                         is_item : 1; /**< indicates it is an item/object placeholder */
 };
 
 /* Size of the index array */
@@ -4267,9 +4268,10 @@ _layout_do_format(const Evas_Object *obj EINA_UNUSED, Ctxt *c,
    const char *s;
    const char *item;
    int handled = 0;
+   Eina_Bool is_item = (n->annotation && n->annotation->is_item);
 
    s = n->format;
-   if (!strncmp(s, "item ", 5))
+   if (!strncmp(s, "item ", 5) || is_item)
      {
         // one of:
         //   item size=20x10 href=name
@@ -4294,17 +4296,17 @@ _layout_do_format(const Evas_Object *obj EINA_UNUSED, Ctxt *c,
 
         // don't care
         //href = strstr(s, " href=");
-        p = strstr(s, " vsize=");
+        p = strstr(s, is_item ? "vsize=" : " vsize=");
         if (p)
           {
-             p += 7;
+             p += (is_item ? 6 : 7);
              if (!strncmp(p, "full", 4)) vsize = VSIZE_FULL;
              else if (!strncmp(p, "ascent", 6)) vsize = VSIZE_ASCENT;
           }
-        p = strstr(s, " size=");
+        p = strstr(s, is_item ? "size=" : " size=");
         if (p)
           {
-             p += 6;
+             p += (is_item ? 5 : 6);
              if (sscanf(p, "%ix%i", &w, &h) == 2)
                {
                   /* this is handled somewhere else because it depends
@@ -4316,10 +4318,10 @@ _layout_do_format(const Evas_Object *obj EINA_UNUSED, Ctxt *c,
           }
         else
           {
-             p = strstr(s, " absize=");
+             p = strstr(s, is_item ? "absize=" : " absize=");
              if (p)
                {
-                  p += 8;
+                  p += (is_item ? 7 : 8);
                   if (sscanf(p, "%ix%i", &w, &h) == 2)
                     {
                        size = SIZE_ABS;
@@ -4327,7 +4329,7 @@ _layout_do_format(const Evas_Object *obj EINA_UNUSED, Ctxt *c,
                }
              else
                {
-                  p = strstr(s, " relsize=");
+                  p = strstr(s, is_item ? "relsize=" : " relsize=");
                   if (p)
                     {
                        /* this is handled somewhere else because it depends
@@ -13268,6 +13270,14 @@ _textblock_annotation_set(Eo *eo_obj, Evas_Textblock_Data *o,
    int len;
    char *buf;
    Evas_Textblock_Node_Format *fnode;
+
+   if (an->is_item)
+     {
+        ERR("Cannot reset format of \"item\" annotations. This is a special"
+             "annotation that should not be modified using this function");
+        return EINA_FALSE;
+     }
+
    Evas_Textblock_Cursor *cur = evas_obj_textblock_cursor_new(eo_obj);
 
    /* Add opening format at 'start' */
@@ -13329,7 +13339,10 @@ _evas_textblock_annotation_set(Eo *eo_obj EINA_UNUSED,
    _evas_textblock_node_format_remove(o, annotation->start_node, 0);
    _evas_textblock_node_format_remove(o, annotation->end_node, 0);
 
-   _textblock_annotation_set(eo_obj, o, annotation, start, end, format);
+   if (!_textblock_annotation_set(eo_obj, o, annotation, start, end, format))
+     {
+        return EINA_FALSE;
+     }
 
    return EINA_TRUE;
 }
@@ -13340,6 +13353,16 @@ _evas_textblock_annotation_remove(Evas_Textblock_Data *o,
 {
    if (remove_nodes)
      {
+        if (an->is_item)
+          {
+             /* Remove the OBJ character along with the cursor. */
+             Evas_Textblock_Cursor *cur = evas_obj_textblock_cursor_new(an->obj);
+             size_t pos = _textblock_fnode_pos_get(o, an->start_node);
+             evas_textblock_cursor_pos_set(cur, pos);
+             evas_textblock_cursor_char_delete(cur);
+             evas_textblock_cursor_free(cur);
+             return; // 'an' should be deleted after char deletion.
+          }
         _evas_textblock_node_format_remove(o, an->start_node, 0);
         _evas_textblock_node_format_remove(o, an->end_node, 0);
      }
@@ -13384,16 +13407,17 @@ _evas_textblock_annotation_del(Eo *eo_obj EINA_UNUSED,
    return EINA_TRUE;
 }
 
-EOLIAN static Evas_Textblock_Annotation *
-_evas_textblock_annotation_insert(Eo *eo_obj, Evas_Textblock_Data *o,
-      size_t start, size_t end EINA_UNUSED, const char *format)
+static Evas_Textblock_Annotation *
+_textblock_annotation_insert(Eo *eo_obj, Evas_Textblock_Data *o,
+      size_t start, size_t end EINA_UNUSED, const char *format,
+      Eina_Bool is_item)
 {
    Evas_Textblock_Annotation *ret = NULL;
    Eina_Strbuf *buf;
    Eina_Bool first = EINA_TRUE;
    const char *item;
 
-   if (!format || (format[0] == '\0') || (end <= start)) return NULL;
+   if (!format || (format[0] == '\0') || (end < start)) return NULL;
 
    /* Sanitize the string and reject format items, closing '/' marks. */
    buf = eina_strbuf_new();
@@ -13434,10 +13458,19 @@ _evas_textblock_annotation_insert(Eo *eo_obj, Evas_Textblock_Data *o,
             EINA_INLIST_GET(ret));
 
    _textblock_annotation_set(eo_obj, o, ret, start, end, format);
+   ret->is_item = is_item;
 
    _evas_textblock_changed(o, eo_obj);
 
    return ret;
+}
+
+EOLIAN static Evas_Textblock_Annotation *
+_evas_textblock_annotation_insert(Eo *eo_obj, Evas_Textblock_Data *o,
+      size_t start, size_t end EINA_UNUSED, const char *format)
+{
+   return _textblock_annotation_insert(eo_obj, o, start, end, format,
+         EINA_FALSE);
 }
 
 EOLIAN static Eina_Iterator *
@@ -13459,6 +13492,21 @@ _evas_textblock_annotation_range_get_all(Eo *eo_obj EINA_UNUSED, Evas_Textblock_
           }
      }
    return _evas_textblock_annotation_iterator_new(lst);
+}
+
+EOLIAN static Evas_Textblock_Annotation *
+_evas_textblock_object_item_insert(Eo *eo_obj EINA_UNUSED,
+         Evas_Textblock_Data *o EINA_UNUSED, size_t pos, const char *format)
+{
+   Evas_Textblock_Cursor *cur;
+   Evas_Textblock_Annotation *ret;
+
+   cur = evas_obj_textblock_cursor_new(eo_obj);
+   evas_textblock_cursor_pos_set(cur, pos);
+   eina_ustrbuf_insert_char(cur->node->unicode, _REPLACEMENT_CHAR, cur->pos);
+   ret = _textblock_annotation_insert(eo_obj, o, pos, pos, format, EINA_TRUE);
+
+   return ret;
 }
 
 /**

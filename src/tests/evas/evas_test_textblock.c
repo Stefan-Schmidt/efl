@@ -4089,6 +4089,28 @@ START_TEST(evas_textblock_annotation)
    an = evas_object_textblock_annotation_insert(tb, 6, 7, "item");
    _test_check_annotation(tb, 0, 8, _COMP_PARAMS("color=#fff"));
 
+   /* Check "item" annotations */
+   evas_object_textblock_text_markup_set(tb, "abcd");
+   an = evas_object_textblock_object_item_insert(tb, 4, "size=16x16");
+   _test_check_annotation(tb, 4, 4, _COMP_PARAMS("size=16x16"));
+
+   /* Check that format is not extended if it's an "object item" */
+   evas_textblock_cursor_pos_set(cur, 5);
+   evas_textblock_cursor_text_append(cur, "a");
+   _test_check_annotation(tb, 5, 7, _COMP_PARAMS());
+   _test_check_annotation(tb, 0, 3, _COMP_PARAMS());
+
+   /* Remove annotation of "item" also removes the OBJ character */
+     {
+        int blen, len;
+        evas_textblock_cursor_pos_set(cur, 5);
+        blen = evas_textblock_cursor_paragraph_text_length_get(cur);
+        evas_object_textblock_annotation_del(tb, an);
+        len = evas_textblock_cursor_paragraph_text_length_get(cur);
+        ck_assert_int_eq(len, blen - 1);
+        _test_check_annotation(tb, 0, 5, _COMP_PARAMS());
+     }
+
    END_TB_TEST();
 }
 END_TEST;

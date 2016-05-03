@@ -620,6 +620,21 @@ class Evas.Textblock (Evas.Object)
             @in y: Evas.Coord; [[y coord to set by.]]
          }
       }
+      object_item_insert {
+         [[Inserts a object item at specified position.
+
+           This adds a placeholder to be queried by higher-level code,
+           which in turn place graphics on top of it. It essentially places an
+           OBJECT REPLACEMENT CHARACTER and set a special annotation to it.
+         ]]
+         return: Evas.Textblock.Annotation *; [[The annotation handle of the
+         inserted item.]]
+         params {
+            @in pos: size; [[Position of the inserted item.]]
+            @in format: const(char)*; [[Format of the inserted item.
+            See Format styles.]]
+         }
+      }
       style_user_peek @const {
          [[Get (don't remove) the style at the top of the user style stack.
 
