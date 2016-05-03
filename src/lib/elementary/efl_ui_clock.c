@@ -60,7 +60,7 @@ static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
    [EFL_UI_CLOCK_TYPE_MINUTE] = { "M", 0, 59, ":" },
    [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" },
    //TODO: use proper limit.
-   [EFL_UI_CLOCK_TYPE_DAY] = { "pP", 0, 6, "" }
+   [EFL_UI_CLOCK_TYPE_DAY] = { "mbB", 0, 6, "" }
 };
 
 static const char *multifield_formats = "cxXrRTDF";
@@ -697,7 +697,7 @@ _field_format_get(Evas_Object *obj,
 {
    Clock_Field *field;
 
-   if (field_type > EFL_UI_CLOCK_TYPE_AMPM) return NULL;
+   if (field_type > EFL_UI_CLOCK_TYPE_DAY) return NULL;
 
    EFL_UI_CLOCK_DATA_GET(obj, sd);
 
@@ -884,14 +884,6 @@ _efl_ui_clock_evas_object_smart_del(Eo *obj, Efl_Ui_Clock_Data *sd)
    evas_obj_smart_del(eo_super(obj, MY_CLASS));
 }
 
-EAPI Evas_Object *
-efl_ui_clock_add(Evas_Object *parent)
-{
-   EINA_SAFETY_ON_NULL_RETURN_VAL(parent, NULL);
-   Evas_Object *obj = eo_add(MY_CLASS, parent);
-   return obj;
-}
-
 EOLIAN static Eo *
 _efl_ui_clock_eo_base_constructor(Eo *obj, Efl_Ui_Clock_Data *_pd EINA_UNUSED)
 {
@@ -928,7 +920,7 @@ _efl_ui_clock_field_visible_get(const Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *sd
 {
    Clock_Field *field;
 
-   if (fieldtype > EFL_UI_CLOCK_TYPE_AMPM) return EINA_FALSE;
+   if (fieldtype > EFL_UI_CLOCK_TYPE_DAY) return EINA_FALSE;
 
    field = sd->field_list + fieldtype;
 
@@ -941,7 +933,7 @@ _efl_ui_clock_field_visible_set(Eo *obj, Efl_Ui_Clock_Data *sd, Efl_Ui_Clock_Typ
    char buf[BUFFER_SIZE];
    Clock_Field *field;
 
-   if (fieldtype > EFL_UI_CLOCK_TYPE_AMPM) return;
+   if (fieldtype > EFL_UI_CLOCK_TYPE_DAY) return;
 
    field = sd->field_list + fieldtype;
    visible = !!visible;
@@ -998,7 +990,7 @@ _efl_ui_clock_field_limit_get(const Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *sd, 
 {
    Clock_Field *field;
 
-   if (fieldtype >= EFL_UI_CLOCK_TYPE_AMPM) return;
+   if (fieldtype >= EFL_UI_CLOCK_TYPE_DAY) return;
 
    field = sd->field_list + fieldtype;
    if (min) *min = field->min;
@@ -1011,7 +1003,7 @@ _efl_ui_clock_field_limit_set(Eo *obj, Efl_Ui_Clock_Data *sd, Efl_Ui_Clock_Type 
    Clock_Field *field;
    struct tm old_time;
 
-   if (fieldtype >= EFL_UI_CLOCK_TYPE_AMPM) return;
+   if (fieldtype >= EFL_UI_CLOCK_TYPE_DAY) return;
 
    if (min > max) return;
 
