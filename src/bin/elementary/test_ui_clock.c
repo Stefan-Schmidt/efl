@@ -55,8 +55,7 @@ test_ui_clock(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_
    evas_object_show(bx);
    evas_object_size_hint_min_set(bx, 360, 240);
 
-   //dt1 = efl_ui_clock_add(bx);
-   Evas_Object *dt1 = eo_add(EFL_UI_CLOCK_CLASS, bx);
+   dt1 = eo_add(EFL_UI_CLOCK_CLASS, bx);
    evas_object_size_hint_weight_set(dt1, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    evas_object_size_hint_align_set(dt1, EVAS_HINT_FILL, 0.5);
    efl_ui_clock_field_visible_set(dt1, EFL_UI_CLOCK_TYPE_HOUR, EINA_FALSE);
@@ -65,7 +64,7 @@ test_ui_clock(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_
    elm_box_pack_end(bx, dt1);
    evas_object_show(dt1);
 
-   /*dt2 = efl_ui_clock_add(bx);
+   dt2 = eo_add(EFL_UI_CLOCK_CLASS, bx);
    evas_object_size_hint_weight_set(dt2, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    evas_object_size_hint_align_set(dt2, EVAS_HINT_FILL, 0.5);
    efl_ui_clock_field_visible_set(dt2, EFL_UI_CLOCK_TYPE_YEAR, EINA_FALSE);
@@ -75,10 +74,9 @@ test_ui_clock(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_
    elm_object_disabled_set(dt2, EINA_TRUE);
    evas_object_show(dt2);
 
-   dt3 = efl_ui_clock_add(bx);
+   dt3 = eo_add(EFL_UI_CLOCK_CLASS, bx);
    evas_object_size_hint_weight_set(dt3, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    evas_object_size_hint_align_set(dt3, EVAS_HINT_FILL, 0.5);
-*/
    // get the current local time
    t = time(NULL);
    localtime_r(&t, &time1);
