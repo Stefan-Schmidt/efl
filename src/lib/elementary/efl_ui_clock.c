@@ -82,7 +82,7 @@ _dt_mod_init()
 {
    Elm_Module *mod = NULL;
 
-   if (!(mod = _elm_module_find_as("datetime/api"))) return NULL;
+   if (!(mod = _elm_module_find_as("clock/api"))) return NULL;
 
    mod->api = malloc(sizeof(Clock_Mod_Api));
    if (!mod->api) return NULL;
