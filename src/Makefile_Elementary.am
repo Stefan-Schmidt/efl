@@ -120,6 +120,7 @@ elm_public_eolian_files = \
 	lib/elementary/efl_ui_grid.eo \
 	lib/elementary/efl_ui_layout_internal_box.eo \
 	lib/elementary/efl_ui_layout_internal_table.eo \
+	lib/elementary/efl_ui_clock.eo \
 	$(NULL)
 
 # Legacy classes - not part of public EO API
@@ -640,6 +641,7 @@ lib_elementary_libelementary_la_SOURCES = \
 	lib/elementary/efl_ui_box_flow.c \
 	lib/elementary/efl_ui_box_layout.c \
 	lib/elementary/efl_ui_grid.c \
+	lib/elementary/efl_ui_clock.c \
 	$(NULL)
 
 lib_elementary_libelementary_la_CFLAGS = @ELEMENTARY_CFLAGS@

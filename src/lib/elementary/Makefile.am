@@ -126,6 +126,7 @@ elm_eolian_files = \
 	efl_ui_grid.eo \
 	efl_ui_layout_internal_box.eo \
 	efl_ui_layout_internal_table.eo \
+	efl_ui_clock.eo \
 	$(NULL)
 
 elm_eolian_type_files = \
@@ -627,6 +628,7 @@ libelementary_la_SOURCES = \
 	efl_ui_box_flow.c \
 	efl_ui_box_layout.c \
 	efl_ui_grid.c \
+	efl_ui_clock.c \
 	$(NULL)
 
 libelementary_la_CFLAGS = @ELEMENTARY_CFLAGS@
