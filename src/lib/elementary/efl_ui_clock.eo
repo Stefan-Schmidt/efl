@@ -12,11 +12,12 @@ enum Efl.Ui.Clock.Type
    hour    = 3, [[Indicates Hour field.]]
    minute  = 4, [[Indicates Minute field.]]
    ampm    = 5, [[Indicates AM/PM field .]]
+   day     = 6, [[Indicated Day field.]]
 }
 
 class Efl.Ui.Clock (Elm.Layout)
 {
-   eo_prefix: efl_ui_obj_clock;
+   legacy_prefix: null;
    methods {
       @property format {
          set {

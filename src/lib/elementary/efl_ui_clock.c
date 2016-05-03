@@ -48,7 +48,8 @@
      &(tmptr)->tm_mday,                  \
      &(tmptr)->tm_hour,                  \
      &(tmptr)->tm_min,                  \
-     &(tmptr)->tm_sec}
+     &(tmptr)->tm_sec,                  \
+     &(tmptr)->tm_wday}
 
 // default limits for individual fields
 static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
@@ -57,7 +58,9 @@ static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
    [EFL_UI_CLOCK_TYPE_DATE] = { "de", 1, 31, "" },
    [EFL_UI_CLOCK_TYPE_HOUR] = { "IHkl", 0, 23, "" },
    [EFL_UI_CLOCK_TYPE_MINUTE] = { "M", 0, 59, ":" },
-   [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" }
+   [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" },
+   //TODO: use proper limit.
+   [EFL_UI_CLOCK_TYPE_DAY] = { "pP", 0, 6, "" }
 };
 
 static const char *multifield_formats = "cxXrRTDF";

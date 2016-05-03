@@ -6,7 +6,7 @@
 #include "elm_widget.h"
 #include "elm_widget_datetime.h"
 
-#define DATETIME_FIELD_COUNT    6
+#define DATETIME_FIELD_COUNT    7
 #define FIELD_FORMAT_LEN        3
 #define DISKSELECTOR_MIN_ITEMS  4
 #define BUFF_SIZE               1024

@@ -29,7 +29,7 @@ typedef struct _Clock_Field              Clock_Field;
 typedef struct _Clock_Mod_Api            Clock_Mod_Api;
 typedef struct _Format_Map               Format_Map;
 
-#define EFL_UI_CLOCK_TYPE_COUNT           6
+#define EFL_UI_CLOCK_TYPE_COUNT           7
 #define EFL_UI_CLOCK_MAX_FORMAT_LEN       64
 #define EFL_UI_CLOCK_MAX_FIELD_FORMAT_LEN 3
 
