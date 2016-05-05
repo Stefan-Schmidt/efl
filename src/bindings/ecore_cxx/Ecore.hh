@@ -11,6 +11,7 @@
 #include <cstring>
 
 #ifdef EFL_BETA_API_SUPPORT
+#include <efl_loop.eo.hh>
 #include <Ecore.eo.hh>
 #endif
 
