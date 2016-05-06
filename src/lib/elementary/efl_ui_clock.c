@@ -49,7 +49,8 @@
      &(tmptr)->tm_hour,                  \
      &(tmptr)->tm_min,                  \
      &(tmptr)->tm_sec,                  \
-     &(tmptr)->tm_wday}
+     &(tmptr)->tm_wday,                  \
+     &(tmptr)->tm_hour}
 
 // default limits for individual fields
 static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
@@ -59,9 +60,8 @@ static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
    [EFL_UI_CLOCK_TYPE_HOUR] = { "IHkl", 0, 23, "" },
    [EFL_UI_CLOCK_TYPE_MINUTE] = { "M", 0, 59, ":" },
    [EFL_UI_CLOCK_TYPE_SECOND] = { "S", 0, 59, "" },
-   [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" },
-   //TODO: use proper limit.
-   [EFL_UI_CLOCK_TYPE_DAY] = { "mbB", 0, 6, "" }
+   [EFL_UI_CLOCK_TYPE_DAY] = { "Aa", 0, 6, "" },
+   [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" }
 };
 
 static const char *multifield_formats = "cxXrRTDF";
@@ -717,7 +717,7 @@ _field_limit_get(Evas_Object *obj,
    Clock_Field *field;
    unsigned int idx;
 
-   if (field_type > EFL_UI_CLOCK_TYPE_MINUTE) return;
+   if (field_type > EFL_UI_CLOCK_TYPE_DAY) return;
 
    EFL_UI_CLOCK_DATA_GET(obj, sd);
 

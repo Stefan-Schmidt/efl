@@ -6,7 +6,7 @@
 #include "elm_widget.h"
 #include "efl_ui_clock_private.h"
 
-#define CLOCK_FIELD_COUNT    7
+#define CLOCK_FIELD_COUNT       8
 #define FIELD_FORMAT_LEN        3
 #define DISKSELECTOR_MIN_ITEMS  4
 #define BUFF_SIZE               1024
@@ -73,7 +73,8 @@ _field_value_set(struct tm *tim, Efl_Ui_Clock_Type  field_type, int val)
 {
    if (field_type >= (CLOCK_FIELD_COUNT - 1)) return;
 
-   int *timearr[]= { &tim->tm_year, &tim->tm_mon, &tim->tm_mday, &tim->tm_hour, &tim->tm_min };
+   int *timearr[]= { &tim->tm_year, &tim->tm_mon, &tim->tm_mday, &tim->tm_hour,
+                     &tim->tm_min, &tim->tm_sec, &tim->tm_wday };
    *timearr[field_type] = val;
 }
 
@@ -82,7 +83,8 @@ _field_value_get(struct tm *tim, Efl_Ui_Clock_Type  field_type)
 {
    if (field_type >= (CLOCK_FIELD_COUNT - 1)) return -1;
 
-   int *timearr[]= { &tim->tm_year, &tim->tm_mon, &tim->tm_mday, &tim->tm_hour, &tim->tm_min };
+   int *timearr[]= { &tim->tm_year, &tim->tm_mon, &tim->tm_mday, &tim->tm_hour,
+                     &tim->tm_min, &tim->tm_sec, &tim->tm_wday };
    return (*timearr[field_type]);
 }
 

@@ -12,8 +12,8 @@ enum Efl.Ui.Clock.Type
    hour    = 3, [[Indicates Hour field.]]
    minute  = 4, [[Indicates Minute field.]]
    second  = 5, [[Indicates Second field.]]
-   ampm    = 6, [[Indicates AM/PM field .]]
-   day     = 7, [[Indicated Day field.]]
+   day     = 6, [[Indicated Day field.]]
+   ampm    = 7, [[Indicates AM/PM field .]]
 }
 
 class Efl.Ui.Clock (Elm.Layout)

@@ -157,7 +157,6 @@ group { name: "elm/uiclock/base/default";
       DATETIME_SEPARATOR(5,4)
       DATETIME_FIELD(5)
       DATETIME_SEPARATOR(6,5)
-      //TODO: move this to different style or different file
       DATETIME_FIELD(6)
       DATETIME_SEPARATOR(7,6)
       DATETIME_FIELD(7)

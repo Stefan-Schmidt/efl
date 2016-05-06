@@ -816,7 +816,7 @@ add_tests:
    ADD_TEST(NULL, "Times & Dates", "Clock Edit 2", test_clock_edit2);
    ADD_TEST(NULL, "Times & Dates", "Clock Pause", test_clock_pause);
    ADD_TEST(NULL, "Times & Dates", "Datetime", test_datetime);
-   ADD_TEST(NULL, "Times & Dates", "Efl Ui Clock", test_ui_clock);
+   ADD_TEST(NULL, "Times & Dates", "Ui.Clock", test_ui_clock);
 
    //------------------------------//
    ADD_TEST(NULL, "Text", "Label", test_label);
