@@ -58,6 +58,7 @@ static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
    [EFL_UI_CLOCK_TYPE_DATE] = { "de", 1, 31, "" },
    [EFL_UI_CLOCK_TYPE_HOUR] = { "IHkl", 0, 23, "" },
    [EFL_UI_CLOCK_TYPE_MINUTE] = { "M", 0, 59, ":" },
+   [EFL_UI_CLOCK_TYPE_SECOND] = { "S", 0, 59, "" },
    [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" },
    //TODO: use proper limit.
    [EFL_UI_CLOCK_TYPE_DAY] = { "mbB", 0, 6, "" }
@@ -799,6 +800,27 @@ _access_info_cb(void *data, Evas_Object *obj EINA_UNUSED)
    return ret;
 }
 
+static Eina_Bool
+_ticker(void *data)
+{
+   double t;
+   time_t tt;
+   struct timeval timev;
+
+   EFL_UI_CLOCK_DATA_GET(data, sd);
+
+   tt = time(NULL);
+   localtime_r(&tt, &sd->curr_time);
+
+   _field_list_display(data);
+
+   gettimeofday(&timev, NULL);
+   t = ((double)(1000000 - timev.tv_usec)) / 1000000.0;
+   sd->ticker = ecore_timer_add(t, _ticker, data);
+
+   return ECORE_CALLBACK_CANCEL;
+}
+
 EOLIAN static void
 _efl_ui_clock_evas_object_smart_add(Eo *obj, Efl_Ui_Clock_Data *priv)
 {
@@ -808,7 +830,7 @@ _efl_ui_clock_evas_object_smart_add(Eo *obj, Efl_Ui_Clock_Data *priv)
    evas_obj_smart_add(eo_super(obj, MY_CLASS));
    elm_widget_sub_object_parent_add(obj);
 
-   // module - initialise module for clock 
+   // module - initialise module for clock
    if (!dt_mod) dt_mod = _dt_mod_init();
    if (dt_mod)
      {
@@ -836,12 +858,13 @@ _efl_ui_clock_evas_object_smart_add(Eo *obj, Efl_Ui_Clock_Data *priv)
      }
 
    priv->freeze_sizing = EINA_TRUE;
-   if (!elm_layout_theme_set(obj, "datetime", "base",
+   if (!elm_layout_theme_set(obj, "uiclock", "base",
                              elm_widget_style_get(obj)))
      CRI("Failed to set layout!");
 
    _field_list_init(obj);
    _reload_format(obj);
+   _ticker(obj);
 
    elm_widget_can_focus_set(obj, EINA_TRUE);
 
@@ -871,6 +894,7 @@ _efl_ui_clock_evas_object_smart_del(Eo *obj, Efl_Ui_Clock_Data *sd)
    Clock_Field *tmp;
    unsigned int idx;
 
+   ecore_timer_del(sd->ticker);
    for (idx = 0; idx < EFL_UI_CLOCK_TYPE_COUNT; idx++)
      {
         tmp = sd->field_list + idx;

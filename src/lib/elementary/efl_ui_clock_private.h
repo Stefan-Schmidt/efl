@@ -29,7 +29,7 @@ typedef struct _Clock_Field              Clock_Field;
 typedef struct _Clock_Mod_Api            Clock_Mod_Api;
 typedef struct _Format_Map               Format_Map;
 
-#define EFL_UI_CLOCK_TYPE_COUNT           7
+#define EFL_UI_CLOCK_TYPE_COUNT           8
 #define EFL_UI_CLOCK_MAX_FORMAT_LEN       64
 #define EFL_UI_CLOCK_MAX_FIELD_FORMAT_LEN 3
 
@@ -80,6 +80,7 @@ struct _Efl_Ui_Clock_Data
    char                      format[EFL_UI_CLOCK_MAX_FORMAT_LEN];
    Evas_Object              *access_obj;
    int                       enabled_field_count;
+   Ecore_Timer              *ticker;
    Eina_Bool                 user_format : 1;  /* whether user set
                                                 * format or default
                                                 * format. */

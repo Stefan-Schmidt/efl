@@ -62,6 +62,7 @@ test_ui_clock(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_
    efl_ui_clock_field_visible_set(dt1, EFL_UI_CLOCK_TYPE_MINUTE, EINA_FALSE);
    efl_ui_clock_field_visible_set(dt1, EFL_UI_CLOCK_TYPE_AMPM, EINA_FALSE);
    efl_ui_clock_field_visible_set(dt1, EFL_UI_CLOCK_TYPE_DAY, EINA_TRUE);
+   efl_ui_clock_field_visible_set(dt1, EFL_UI_CLOCK_TYPE_SECOND, EINA_FALSE);
    elm_box_pack_end(bx, dt1);
    evas_object_show(dt1);
 
@@ -72,6 +73,7 @@ test_ui_clock(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_
    efl_ui_clock_field_visible_set(dt2, EFL_UI_CLOCK_TYPE_MONTH, EINA_FALSE);
    efl_ui_clock_field_visible_set(dt2, EFL_UI_CLOCK_TYPE_DATE, EINA_FALSE);
    efl_ui_clock_field_visible_set(dt2, EFL_UI_CLOCK_TYPE_DAY, EINA_TRUE);
+   efl_ui_clock_field_visible_set(dt1, EFL_UI_CLOCK_TYPE_SECOND, EINA_TRUE);
    elm_box_pack_end(bx, dt2);
    elm_object_disabled_set(dt2, EINA_TRUE);
    evas_object_show(dt2);
