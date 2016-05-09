@@ -145,6 +145,9 @@ _field_clicked_cb(void *data, const Eo_Event *event)
    ctx_mod = (Ctxpopup_Module_Data *)data;
    if (!ctx_mod) return EINA_FALSE;
 
+   if (!efl_ui_clock_edit_mode_get(ctx_mod->mod_data.base))
+     return EINA_FALSE;
+
    snprintf(buf, sizeof(buf), "datetime/%s", elm_object_style_get(event->obj));
 
    if (ctx_mod->ctxpopup)

@@ -58,7 +58,7 @@ static Format_Map mapping[EFL_UI_CLOCK_TYPE_COUNT] = {
    [EFL_UI_CLOCK_TYPE_MONTH] = { "mbBh", 0, 11, "" },
    [EFL_UI_CLOCK_TYPE_DATE] = { "de", 1, 31, "" },
    [EFL_UI_CLOCK_TYPE_HOUR] = { "IHkl", 0, 23, "" },
-   [EFL_UI_CLOCK_TYPE_MINUTE] = { "M", 0, 59, ":" },
+   [EFL_UI_CLOCK_TYPE_MINUTE] = { "M", 0, 59, "" },
    [EFL_UI_CLOCK_TYPE_SECOND] = { "S", 0, 59, "" },
    [EFL_UI_CLOCK_TYPE_DAY] = { "Aa", 0, 6, "" },
    [EFL_UI_CLOCK_TYPE_AMPM] = { "pP", 0, 1, "" }
@@ -431,6 +431,37 @@ EOLIAN static Eina_Bool
 _efl_ui_clock_elm_widget_focus_next_manager_is(Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *_pd EINA_UNUSED)
 {
    return EINA_TRUE;
+}
+
+EOLIAN static void
+_efl_ui_clock_pause_set(Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *sd, Eina_Bool paused)
+{
+   paused = !!paused;
+   if (sd->paused == paused)
+     return;
+   sd->paused = paused;
+   if (paused)
+     ecore_timer_freeze(sd->ticker);
+   else
+     ecore_timer_thaw(sd->ticker);
+}
+
+EOLIAN static Eina_Bool
+_efl_ui_clock_pause_get(Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *sd)
+{
+   return sd->paused;
+}
+
+EOLIAN static void
+_efl_ui_clock_edit_mode_set(Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *sd, Eina_Bool edit_mode)
+{
+   sd->edit_mode = edit_mode;
+}
+
+EOLIAN static Eina_Bool
+_efl_ui_clock_edit_mode_get(Eo *obj EINA_UNUSED, Efl_Ui_Clock_Data *sd)
+{
+   return sd->edit_mode;
 }
 
 EOLIAN static Eina_Bool

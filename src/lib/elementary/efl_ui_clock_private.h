@@ -81,6 +81,8 @@ struct _Efl_Ui_Clock_Data
    Evas_Object              *access_obj;
    int                       enabled_field_count;
    Ecore_Timer              *ticker;
+   Eina_Bool                 paused : 1;
+   Eina_Bool                 edit_mode : 1;
    Eina_Bool                 user_format : 1;  /* whether user set
                                                 * format or default
                                                 * format. */

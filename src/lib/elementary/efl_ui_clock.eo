@@ -101,6 +101,31 @@ class Efl.Ui.Clock (Elm.Layout)
             fmt: const(char)* @nullable; [[The clock format.]]
          }
       }
+      @property pause {
+         [[Whether the given clock widget should be paused or not.
+
+           This function pauses or starts the clock widget.
+
+           @since 1.9
+         ]]
+         set {
+         }
+         get {
+         }
+         values {
+            paused: bool; [[$true to pause clock, $false otherwise]]
+         }
+      }
+      @property edit_mode {
+         [[Digits of the given clock widget should be editable when in editing mode.]]
+         set {
+         }
+         get {
+         }
+         values {
+            value: bool; [[$true to set edit mode, $false otherwise]]
+         }
+      }
       field_limit_set {
          [[Set the field limits of a field.
 
