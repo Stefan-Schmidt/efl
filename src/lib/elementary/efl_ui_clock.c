@@ -837,13 +837,21 @@ _ticker(void *data)
    double t;
    time_t tt;
    struct timeval timev;
+   Clock_Field *field;
 
    EFL_UI_CLOCK_DATA_GET(data, sd);
 
    tt = time(NULL);
    localtime_r(&tt, &sd->curr_time);
 
-   _field_list_display(data);
+   if (sd->curr_time.tm_sec > 0)
+     {
+        field = sd->field_list + EFL_UI_CLOCK_TYPE_SECOND;
+        if (field->fmt_exist && field->visible)
+          dt_mod->field_value_display(sd->mod_data, field->item_obj);
+     }
+   else
+     _field_list_display(data);
 
    gettimeofday(&timev, NULL);
    t = ((double)(1000000 - timev.tv_usec)) / 1000000.0;
