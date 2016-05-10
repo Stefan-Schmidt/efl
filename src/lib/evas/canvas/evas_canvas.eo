@@ -504,7 +504,7 @@ class Evas.Canvas (Eo.Base, Evas.Common_Interface, Efl.Animator)
               any host system's pointing device abilities.
 
               A canvas by default begins with no mouse buttons being
-              pressed and only calls to @.event_feed can alter that.
+              pressed and only pointer move events can alter that.
 
               The least significant bit corresponds to the first mouse
               button (button 1) and the most significant bit corresponds
@@ -1553,13 +1553,6 @@ class Evas.Canvas (Eo.Base, Evas.Common_Interface, Efl.Animator)
             @in data: const(void)*; [[Data for canvas.]]
          }
       }
-      event_feed {
-         [[Feed an input event.]]
-         legacy: null;
-         params {
-            event: const(Efl.Pointer.Event)*;
-         }
-      }
    }
    implements {
       Eo.Base.constructor;
@@ -1580,5 +1573,6 @@ class Evas.Canvas (Eo.Base, Evas.Common_Interface, Efl.Animator)
       device,changed;
       axis,update;
       viewport,resize;
+      pointer;
    }
 }
