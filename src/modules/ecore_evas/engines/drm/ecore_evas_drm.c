@@ -325,6 +325,7 @@ ecore_evas_drm_new_internal(const char *device, unsigned int parent EINA_UNUSED,
                                (Ecore_Event_Multi_Move_Cb)_ecore_evas_mouse_multi_move_process,
                                (Ecore_Event_Multi_Down_Cb)_ecore_evas_mouse_multi_down_process,
                                (Ecore_Event_Multi_Up_Cb)_ecore_evas_mouse_multi_up_process);
+   _ecore_event_window_direct_cb_set(ee->prop.window, _ecore_evas_input_direct_cb);
 
    /* NB: Send a fake mouse move event so that E-Wl gets an updated
     * pointer position, else we end up with buggers (ref: T2854) */
@@ -513,6 +514,7 @@ ecore_evas_gl_drm_new_internal(const char *device, unsigned int parent EINA_UNUS
                                (Ecore_Event_Multi_Move_Cb)_ecore_evas_mouse_multi_move_process,
                                (Ecore_Event_Multi_Down_Cb)_ecore_evas_mouse_multi_down_process,
                                (Ecore_Event_Multi_Up_Cb)_ecore_evas_mouse_multi_up_process);
+   _ecore_event_window_direct_cb_set(ee->prop.window, _ecore_evas_input_direct_cb);
 
    return ee;
 
