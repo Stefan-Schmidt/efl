@@ -124,4 +124,7 @@ interface Efl.Gfx {
          }
       }
    }
+   events {
+      pointer; [[New generic pointer (mouse, finger, pen...) event.]]
+   }
 }

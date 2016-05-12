@@ -1422,9 +1422,11 @@ evas_event_feed_mouse_wheel(Eo *eo_e, int direction, int z, unsigned int timesta
 }
 
 static void
-_canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int y, unsigned int timestamp, const void *data)
+_canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int y, unsigned int timestamp, const void *data, Efl_Pointer_Event_Data *pe)
 {
    Evas_Object *nogrep_obj = NULL;
+   Efl_Pointer_Event_Data *pe2data;
+   Efl_Pointer_Event *pe2 = NULL;
    int px, py;
 
    px = e->pointer.x;
@@ -1471,6 +1473,14 @@ _canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int
              ev.event_flags = e->default_event_flags;
              ev.dev = _evas_device_top_get(eo_e);
              if (ev.dev) eo_ref(ev.dev);
+
+             /* FIXME: use dup and no */
+             if (pe)
+               {
+                  pe2 = efl_pointer_event_instance_get(EFL_POINTER_EVENT_CLASS, pe->eo, (void **) &pe2data);
+                  efl_pointer_event_legacy_info_set(pe2, &ev, EVAS_CALLBACK_MOUSE_MOVE);
+               }
+
              copy = evas_event_list_copy(e->pointer.object.in);
              EINA_LIST_FOREACH(copy, l, eo_obj)
                {
@@ -1492,6 +1502,14 @@ _canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int
 
                        if ((px != x) || (py != y))
                          {
+                            if (pe2)
+                              {
+                                 pe2data->cur.x = ev.cur.canvas.x;
+                                 pe2data->cur.y = ev.cur.canvas.y;
+                                 pe2data->cur.xsub = ev.cur.canvas.x;
+                                 pe2data->cur.ysub = ev.cur.canvas.y;
+                                 eo_event_callback_call(eo_obj, EFL_GFX_EVENT_POINTER, pe2);
+                              }
                             evas_object_event_callback_call(eo_obj, obj,
                                                             EVAS_CALLBACK_MOUSE_MOVE, &ev, event_id);
                             if ((obj->proxy->is_proxy) &&
@@ -1514,6 +1532,7 @@ _canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int
                }
              _evas_post_event_callback_call(eo_e, e);
              if (ev.dev) eo_unref(ev.dev);
+             eo_unref(pe2);
           }
           {
              Evas_Event_Mouse_Out ev;
@@ -1621,6 +1640,13 @@ _canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int
         ev3.event_flags = e->default_event_flags;
         ev3.dev = ev.dev;
 
+        /* FIXME: use dup and no evas struct */
+        if (pe)
+          {
+             pe2 = efl_pointer_event_instance_get(EFL_POINTER_EVENT_CLASS, pe->eo, (void**) &pe2data);
+             efl_pointer_event_legacy_info_set(pe2, &ev, EVAS_CALLBACK_MOUSE_MOVE);
+          }
+
         /* get all new in objects */
         ins = evas_event_objects_event_list(eo_e, NULL, x, y);
         /* go thru old list of in objects */
@@ -1652,6 +1678,14 @@ _canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int
                        ev.cur.canvas.x = e->pointer.x;
                        ev.cur.canvas.y = e->pointer.y;
                        _evas_event_havemap_adjust(eo_obj, obj, &ev.cur.canvas.x, &ev.cur.canvas.y, obj->mouse_grabbed);
+                       if (pe2)
+                         {
+                            pe2data->cur.x = ev.cur.canvas.x;
+                            pe2data->cur.y = ev.cur.canvas.y;
+                            pe2data->cur.xsub = ev.cur.canvas.x;
+                            pe2data->cur.ysub = ev.cur.canvas.y;
+                         }
+                       ev.reserved = pe2;
                        evas_object_event_callback_call(eo_obj, obj, EVAS_CALLBACK_MOUSE_MOVE, &ev, event_id);
                        if ((obj->proxy->is_proxy) && (obj->proxy->src_events))
                          _evas_event_source_mouse_move_events(eo_obj, eo_e, &ev,
@@ -1681,6 +1715,7 @@ _canvas_event_feed_mouse_move_internal(Eo *eo_e, Evas_Public_Data *e, int x, int
                }
           }
         _evas_post_event_callback_call(eo_e, e);
+        eo_unref(pe2);
 
         _evas_object_event_new();
 
@@ -1763,6 +1798,13 @@ nogrep:
         ev.dev = _evas_device_top_get(eo_e);
         if (ev.dev) eo_ref(ev.dev);
 
+        /* FIXME: use dup and no evas struct */
+        if (pe)
+          {
+             pe2 = efl_pointer_event_instance_get(EFL_POINTER_EVENT_CLASS, pe->eo, (void**) &pe2data);
+             efl_pointer_event_legacy_info_set(pe2, &ev, EVAS_CALLBACK_MOUSE_MOVE);
+          }
+
         ev2.buttons = e->pointer.button;
         ev2.output.x = e->pointer.x;
         ev2.output.y = e->pointer.y;
@@ -1844,6 +1886,14 @@ nogrep:
                        ev.cur.canvas.x = e->pointer.x;
                        ev.cur.canvas.y = e->pointer.y;
                        _evas_event_havemap_adjust(eo_obj, obj, &ev.cur.canvas.x, &ev.cur.canvas.y, obj->mouse_grabbed);
+                       if (pe2)
+                         {
+                            pe2data->cur.x = ev.cur.canvas.x;
+                            pe2data->cur.y = ev.cur.canvas.y;
+                            pe2data->cur.xsub = ev.cur.canvas.x;
+                            pe2data->cur.ysub = ev.cur.canvas.y;
+                         }
+                       ev.reserved = pe2;
                        evas_object_event_callback_call(eo_obj, obj, EVAS_CALLBACK_MOUSE_MOVE, &ev, event_id);
                        if ((obj->proxy->is_proxy) && (obj->proxy->src_events))
                          _evas_event_source_mouse_move_events(eo_obj, eo_e, &ev,
@@ -1870,6 +1920,7 @@ nogrep:
              if (e->delete_me) break;
           }
         _evas_post_event_callback_call(eo_e, e);
+        eo_unref(pe2);
 
         _evas_object_event_new();
 
@@ -1914,14 +1965,14 @@ EAPI void
 evas_event_input_mouse_move(Eo *eo_e, int x, int y, unsigned int timestamp, const void *data)
 {
    Evas_Public_Data *e = eo_data_scope_get(eo_e, EVAS_CANVAS_CLASS);
-   _canvas_event_feed_mouse_move_internal(eo_e, e, x - e->framespace.x, y - e->framespace.y, timestamp, data);
+   _canvas_event_feed_mouse_move_internal(eo_e, e, x - e->framespace.x, y - e->framespace.y, timestamp, data, NULL);
 }
 
 EAPI void
 evas_event_feed_mouse_move(Eo *eo_e, int x, int y, unsigned int timestamp, const void *data)
 {
    Evas_Public_Data *e = eo_data_scope_get(eo_e, EVAS_CANVAS_CLASS);
-   _canvas_event_feed_mouse_move_internal(eo_e, e, x, y, timestamp, data);
+   _canvas_event_feed_mouse_move_internal(eo_e, e, x, y, timestamp, data, NULL);
 }
 
 EAPI void
@@ -3059,7 +3110,7 @@ _evas_canvas_event_pointer_cb(void *data, const Eo_Event *event)
         if (ev->finger == 0)
           {
              _canvas_event_feed_mouse_move_internal(eo_e, e, ev->cur.x, ev->cur.y,
-                                                    ev->timestamp, ev->data);
+                                                    ev->timestamp, ev->data, ev);
           }
         else
           {
