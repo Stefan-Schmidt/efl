@@ -9500,17 +9500,14 @@ _cursor_text_append(Eo *eo_obj, Evas_Textblock_Cursor *cur, const char *_text,
          * the first for the paragraph which must be after our position  */
         if (fnode)
           {
-             if (!evas_textblock_cursor_format_is_visible_get(cur))
+             nnode = _NODE_FORMAT(EINA_INLIST_GET(fnode)->next);
+             if (nnode && (nnode->text_node == n))
                {
-                  nnode = _NODE_FORMAT(EINA_INLIST_GET(fnode)->next);
-                  if (nnode && (nnode->text_node == n))
-                    {
-                       fnode = nnode;
-                    }
-                  else
-                    {
-                       fnode = NULL;
-                    }
+                  fnode = nnode;
+               }
+             else
+               {
+                  fnode = NULL;
                }
           }
         else

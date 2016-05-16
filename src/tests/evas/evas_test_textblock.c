@@ -4125,6 +4125,16 @@ START_TEST(evas_textblock_annotation)
    _test_check_annotation(tb, 0, 0, _COMP_PARAMS("color=#fff"));
    _test_check_annotation(tb, 5, 5, _COMP_PARAMS("color=#fff"));
 
+   /* Specific case with PS */
+   efl_text_set(tb, "hello\nworld");
+   an = evas_object_textblock_annotation_insert(tb, 0, 4, "color=#fff");
+   _test_check_annotation(tb, 4, 4, _COMP_PARAMS("color=#fff"));
+   evas_textblock_cursor_pos_set(cur, 5);
+   /* Cursor position is now: hello|\nworld */
+   evas_object_textblock_cursor_text_append(tb, cur, "a");
+   _test_check_annotation(tb, 0, 0, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 5, 5, _COMP_PARAMS("color=#fff"));
+
    END_TB_TEST();
 }
 END_TEST;
