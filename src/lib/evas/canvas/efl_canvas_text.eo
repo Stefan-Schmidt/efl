@@ -3,16 +3,6 @@ struct @extern Evas.Textblock.Style;
 struct @extern Evas.Textblock.Annotation;
 struct Evas.Textblock.Node_Format;
 
-enum @extern Evas.Textblock.Text_Type
-{
-   [[Text type for evas textblock.]]
-   legacy: Evas_Textblock_Text;
-
-   raw, [[Textblock text of type raw.]]
-   plain, [[Textblock text of type plain.]]
-   markup [[Textblock text of type markup.]]
-}
-
 struct Evas_Textblock_Rectangle
 {
    [[Rectangle that represents some geometry in this object.]]
@@ -22,26 +12,10 @@ struct Evas_Textblock_Rectangle
    h: Evas.Coord; [[rectangle's height.]]
 }
 
-class Evas.Textblock (Evas.Object, Efl.Text)
+class Efl.Canvas.Text (Evas.Object, Efl.Text)
 {
    legacy_prefix: evas_object_textblock;
-   eo_prefix: evas_obj_textblock;
    methods {
-      @property text_markup {
-         set {
-            [[Sets the tetxblock's text to the markup text.
-
-              Note: assumes text does not include the unicode object
-              replacement char (0xFFFC)
-            ]]
-         }
-         get {
-            [[Get the markup of the object.]]
-         }
-         values {
-            text: const(char)*; [[The markup text to use.]]
-         }
-      }
       @property valign {
          set {
             [[Sets the vertical alignment of text within the textblock object
@@ -94,6 +68,11 @@ class Evas.Textblock (Evas.Object, Efl.Text)
       @property replace_char {
          set {
             [[Set the "replacement character" to use for the given textblock object.]]
+         }
+         get {
+            [[Gets the "replacement character" to use for the given text
+              object.
+            ]]
          }
          values {
             ch: const(char)*; [[The charset name.]]
@@ -228,13 +207,6 @@ class Evas.Textblock (Evas.Object, Efl.Text)
             @out cw: Evas.Coord; [[w coord of the line.]]
             @out ch: Evas.Coord; [[h coord of the line.]]
          }
-      }
-      replace_char_get {
-        [[Get the "replacement character" for given textblock object.
-
-          Returns $null if no replacement character is in use.
-        ]]
-        return: const(char)*; [[Replacement character or $null.]]
       }
       style_user_pop {
          [[Del the from the top of the user style stack.
@@ -475,8 +447,6 @@ class Evas.Textblock (Evas.Object, Efl.Text)
          params {
             @in cur1: const(Evas.Textblock.Cursor)*; [[Range start position.]]
             @in cur2: const(Evas.Textblock.Cursor)*; [[Range end position.]]
-            @in format: Evas.Textblock.Text_Type; [[The form on which to return
-            the text. Markup - in textblock markup. Plain - UTF8.]]
          }
       }
       cursor_content_get {

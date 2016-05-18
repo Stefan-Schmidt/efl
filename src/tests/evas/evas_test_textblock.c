@@ -4163,8 +4163,8 @@ START_TEST(evas_textblock_text_iface)
    efl_text_set(tb, "a");
    evas_object_textblock_size_native_get(tb, &bw, &bh);
    efl_text_set(tb, "a\nb");
-   evas_obj_textblock_cursor_pos_set(tb, cur, 1);
-   evas_obj_textblock_cursor_char_delete(tb, cur);
+   efl_canvas_text_cursor_pos_set(tb, cur, 1);
+   efl_canvas_text_cursor_char_delete(tb, cur);
    evas_object_textblock_size_native_get(tb, &nw, &nh);
    ck_assert_int_eq(nh, bh);
 
@@ -4172,12 +4172,12 @@ START_TEST(evas_textblock_text_iface)
    evas_object_textblock_size_native_get(tb, &w, &h);
    efl_text_set(tb, "aa\nb\nc\nd");
    evas_object_textblock_size_native_get(tb, &bw, &bh);
-   evas_obj_textblock_cursor_pos_set(tb, cur, 0);
-   evas_obj_textblock_cursor_char_delete(tb, cur); // delete 'a'
+   efl_canvas_text_cursor_pos_set(tb, cur, 0);
+   efl_canvas_text_cursor_char_delete(tb, cur); // delete 'a'
    evas_object_textblock_size_native_get(tb, &nw, &nh);
    ck_assert_int_eq(nh, bh);
-   evas_obj_textblock_cursor_char_delete(tb, cur); // delete 'a'
-   evas_obj_textblock_cursor_char_delete(tb, cur); // delete '\n'
+   efl_canvas_text_cursor_char_delete(tb, cur); // delete 'a'
+   efl_canvas_text_cursor_char_delete(tb, cur); // delete '\n'
    evas_object_textblock_size_native_get(tb, &nw, &nh);
    ck_assert_int_lt(nh, bh);
    /* "b\nc\nd" is left */

@@ -556,3 +556,7 @@ EAPI Eina_Bool                                evas_textblock_cursor_eol_get(cons
  */
 EAPI void                                     evas_object_textblock_text_markup_prepend(Evas_Textblock_Cursor *cur, const char *text) EINA_ARG_NONNULL(1, 2);
 
+EAPI void evas_object_textblock_text_markup_set(Evas_Object *obj, const char *text);
+
+EAPI const char *evas_object_textblock_text_markup_get(Evas_Object *obj);
+EAPI void evas_object_textblock_legacy_newline_set(Evas_Object *obj, Eina_Bool mode);
