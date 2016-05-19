@@ -13642,6 +13642,7 @@ _efl_canvas_text_object_item_insert(Eo *eo_obj EINA_UNUSED,
    evas_textblock_cursor_pos_set(cur, pos);
    eina_ustrbuf_insert_char(cur->node->unicode, _REPLACEMENT_CHAR, cur->pos);
    ret = _textblock_annotation_insert(eo_obj, o, pos, pos, format, EINA_TRUE);
+   efl_canvas_text_cursor_free(eo_obj, cur);
 
    return ret;
 }
