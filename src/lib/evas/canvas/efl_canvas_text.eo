@@ -1,4 +1,4 @@
-struct @extern Evas.Textblock.Cursor;
+struct @extern Efl.Canvas.Text.Cursor;
 struct @extern Evas.Textblock.Style;
 struct @extern Evas.Textblock.Annotation;
 struct Evas.Textblock.Node_Format;
@@ -136,7 +136,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
       @property cursor {
          get {
             [[Get the object's main cursor.]]
-            return: Evas.Textblock.Cursor *;
+            return: Efl.Canvas.Text.Cursor *;
          }
       }
       @property size_native {
@@ -228,7 +228,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
            associate it. (only people developing the actual object, and
            not users of the object).
          ]]
-         return: Evas.Textblock.Cursor *; [[The new cursor.]]
+         return: Efl.Canvas.Text.Cursor *; [[The new cursor.]]
       }
       cursor_free {
          [[Free the cursor and unassociate it from the object.
@@ -236,13 +236,13 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
            Note: do not use it to free unassociated cursors.]]
 
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to free.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to free.]]
          }
       }
       cursor_pos_set {
          [[Set the cursor pos.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to be set with $pos]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to be set with $pos]]
             @in pos: int; [[The pos to set.]]
          }
       }
@@ -250,33 +250,33 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          [[Gets the cursor position.]]
          return: int; [[The current position of $cur in the text.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to get the position from.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The cursor to get the position from.]]
          }
       }
       cursor_paragraph_first {
          [[Sets the cursor to the start of the first text node.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to update.]]
          }
       }
       cursor_paragraph_last {
          [[Sets the cursor to the end of the last text node.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to set.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to set.]]
          }
       }
       cursor_paragraph_next {
          [[Advances to the start of the next text node.]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to update.]]
          }
       }
       cursor_paragraph_prev {
          [[Advances to the end of the previous text node]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to update.]]
          }
       }
       cursor_word_end {
@@ -286,21 +286,21 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The moved cursor.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The moved cursor.]]
          }
       }
       cursor_char_next {
          [[ Advances $cur one character forward, if possible ]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The moved cursor.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The moved cursor.]]
          }
       }
       cursor_char_prev {
          [[ Advances $cur one character backwards, if possible ]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to advance.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to advance.]]
          }
       }
       cursor_word_start {
@@ -308,39 +308,39 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          @since 1.2]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to move.]]
          }
       }
       cursor_paragraph_char_first {
          [[Goes to the first char in the node the cursor is pointing on.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to move.]]
          }
       }
       cursor_paragraph_char_last {
          [[Go to the last char in a text node.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to move.]]
          }
       }
       cursor_line_set {
          [[Sets the cursor position to the start of a given line.]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to update.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to update.]]
             @in line: int; [[The line number to which the cursor is set.]]
          }
       }
       cursor_line_char_first {
          [[Go to the start of the current line.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to move.]]
          }
       }
       cursor_line_char_last {
          [[Go to the end of the current line.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to move.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to move.]]
          }
       }
       cursor_compare {
@@ -351,8 +351,8 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: int; [[-1 if cur1 < cur2, 0 if cur1 == cur2, 1 otherwise.]]
          params {
-            @in cur1: const(Evas.Textblock.Cursor)*; [[The first cursor.]]
-            @in cur2: const(Evas.Textblock.Cursor)*; [[The second cursor.]]
+            @in cur1: const(Efl.Canvas.Text.Cursor)*; [[The first cursor.]]
+            @in cur2: const(Efl.Canvas.Text.Cursor)*; [[The second cursor.]]
          }
       }
       cursor_copy {
@@ -362,8 +362,8 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
            these are cursors for different textblock objects.
          ]]
          params {
-            @in cur_dest: Evas.Textblock.Cursor *; [[The destination cursor.]]
-            @in cur: const(Evas.Textblock.Cursor)*; [[The source cursor.]]
+            @in cur_dest: Efl.Canvas.Text.Cursor *; [[The destination cursor.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The source cursor.]]
          }
       }
       cursor_text_append {
@@ -373,7 +373,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: int; [[The length of the added text.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to where to add text at.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to where to add text at.]]
             @in text: const(char)*; [[The text to add.]]
          }
       }
@@ -384,7 +384,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: int; [[The length of the added text.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to where to add text at.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to where to add text at.]]
             @in text: const(char)*; [[The text to add.]]
          }
       }
@@ -394,14 +394,14 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
            If there's a format pointing to this position, delete it as well.
          ]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor pointing to the current location.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor pointing to the current location.]]
          }
       }
       cursor_range_delete {
          [[Delete the range between given cursors.]]
          params {
-            @in cur1: Evas.Textblock.Cursor *; [[Range start position.]]
-            @in cur2: Evas.Textblock.Cursor *; [[Range end position.]]
+            @in cur1: Efl.Canvas.Text.Cursor *; [[Range start position.]]
+            @in cur2: Efl.Canvas.Text.Cursor *; [[Range end position.]]
          }
       }
       cursor_paragraph_text_get {
@@ -411,7 +411,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: const(char)*; [[The markup of the paragraph point by $cur.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor we query.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The cursor we query.]]
          }
       }
       cursor_paragraph_text_length_get {
@@ -422,7 +422,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: int; [[The length of the paragraph on success, -1 otehrwise.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor which we query
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The cursor which we query
             the paragraph with.]]
          }
       }
@@ -437,16 +437,16 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in start: Evas.Textblock.Cursor *; [[Range start position.]]
-            @in end: Evas.Textblock.Cursor *; [[Range end position.]]
+            @in start: Efl.Canvas.Text.Cursor *; [[Range start position.]]
+            @in end: Efl.Canvas.Text.Cursor *; [[Range end position.]]
          }
       }
       cursor_range_text_get {
          [[Returns the text in the range between $cur1 and $cur2.]]
          return: own(char*); [[The text in the given range.]]
          params {
-            @in cur1: const(Evas.Textblock.Cursor)*; [[Range start position.]]
-            @in cur2: const(Evas.Textblock.Cursor)*; [[Range end position.]]
+            @in cur1: const(Efl.Canvas.Text.Cursor)*; [[Range start position.]]
+            @in cur2: const(Efl.Canvas.Text.Cursor)*; [[Range end position.]]
          }
       }
       cursor_content_get {
@@ -459,7 +459,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: own(char*); [[The representation of the content at $cur.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The cursor to query.]]
          }
       }
       cursor_geometry_bidi_get {
@@ -475,7 +475,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: bool; [[$true for split cursor, $false otherwise.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The cursor to query.]]
             @out cx: int; [[the x of the cursor (or upper cursor).]]
             @out cy: int; [[the y of the cursor (or upper cursor).]]
             @out cw: int; [[the width of the cursor (or upper cursor).]]
@@ -484,7 +484,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
             @out cy2: int; [[the y of the lower cursor.]]
             @out cw2: int; [[the width of the lower cursor.]]
             @out ch2: int; [[the height of the lower cursor.]]
-            @in ctype: Evas.Textblock.Cursor.Type; [[the type of the cursor.]]
+            @in ctype: Efl.Canvas.Text.Cursor.Type; [[the type of the cursor.]]
          }
       }
       cursor_geometry_get {
@@ -502,20 +502,20 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
          return: int; [[line number of the char on success, -1 on error.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[The cursor to query.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[The cursor to query.]]
             @out cx: int; [[the x of the cursor (or upper cursor).]]
             @out cy: int; [[the y of the cursor (or upper cursor).]]
             @out cw: int; [[the width of the cursor (or upper cursor).]]
             @out ch: int; [[the height of the cursor (or upper cursor).]]
             @out dir: Evas.BiDi_Direction; [[the direction of the cursor, can be NULL.]]
-            @in ctype: Evas.Textblock.Cursor.Type; [[the type of the cursor.]]
+            @in ctype: Efl.Canvas.Text.Cursor.Type; [[the type of the cursor.]]
          }
       }
       cursor_char_geometry_get {
          [[Returns the geometry of the char at cur.]]
          return: int; [[line number on success, -1 otherwise.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor) *; [[the position of the char.]]
+            @in cur: const(Efl.Canvas.Text.Cursor) *; [[the position of the char.]]
             @out cx: int; [[the x of the char.]]
             @out cy: int; [[the y of the char.]]
             @out cw: int; [[the w of the char.]]
@@ -526,7 +526,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          [[Returns the geometry of the pen at cur.]]
          return: int; [[line number on success, -1 otherwise.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor) *; [[the position of the char.]]
+            @in cur: const(Efl.Canvas.Text.Cursor) *; [[the position of the char.]]
             @out cpen_x: int; [[the x of the char.]]
             @out cy: int; [[the y of the char.]]
             @out cadv: int; [[the w of the char.]]
@@ -537,7 +537,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          [[Returns the geometry of the char at cur.]]
          return: int; [[line number on success, -1 otherwise.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor) *; [[the position of the line.]]
+            @in cur: const(Efl.Canvas.Text.Cursor) *; [[the position of the line.]]
             @out cx: int; [[the x of the line.]]
             @out cy: int; [[the y of the line.]]
             @out cw: int; [[the w of the line.]]
@@ -548,8 +548,8 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          [[Get the geometry of a range.]]
          return: list<Evas.Textblock.Rectangle *> *; [[List of rectangles representing the range.]]
          params {
-            @in cur1: const(Evas.Textblock.Cursor)*; [[one side of the range.]]
-            @in cur2: const(Evas.Textblock.Cursor)*; [[other size of the range.]]
+            @in cur1: const(Efl.Canvas.Text.Cursor)*; [[one side of the range.]]
+            @in cur2: const(Efl.Canvas.Text.Cursor)*; [[other size of the range.]]
          }
       }
       cursor_range_simple_geometry_get {
@@ -562,22 +562,22 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          return: free(own(iterator<Evas.Textblock.Rectangle *> *),
                  eina_iterator_free); [[iterator of rectangles representing the range.]]
          params {
-            @in cur1: const(Evas.Textblock.Cursor)*; [[one side of the range.]]
-            @in cur2: const(Evas.Textblock.Cursor)*; [[other size of the range.]]
+            @in cur1: const(Efl.Canvas.Text.Cursor)*; [[one side of the range.]]
+            @in cur2: const(Efl.Canvas.Text.Cursor)*; [[other size of the range.]]
          }
       }
       cursor_eol_get {
          [[Check if the cursor points to the end of the line.]]
          return: bool; [[$true if $cur is at end of line , $false otherwise.]]
          params {
-            @in cur: const(Evas.Textblock.Cursor)*; [[Cursor to query.]]
+            @in cur: const(Efl.Canvas.Text.Cursor)*; [[Cursor to query.]]
          }
       }
       cursor_char_coord_set {
          [[Set the position of the cursor according to the X and Y coordinates.]]
          return: bool; [[$true on success, $false otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to be set.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to be set.]]
             @in x: Evas.Coord; [[x coord to set by.]]
             @in y: Evas.Coord; [[y coord to set by.]]
          }
@@ -586,7 +586,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          [[Set the cursor position according to the y coord.]]
          return: int; [[line number on success, -1 otherwise.]]
          params {
-            @in cur: Evas.Textblock.Cursor *; [[The cursor to be set.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[The cursor to be set.]]
             @in y: Evas.Coord; [[y coord to set by.]]
          }
       }

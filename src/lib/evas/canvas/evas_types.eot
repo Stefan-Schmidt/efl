@@ -91,6 +91,13 @@ enum Evas.Textblock.Cursor.Type
    before [[ cursor type is before. ]]
 }
 
+// FIXME: legacy type for enum is not supported in eolian (yet?), so redefining.
+enum Efl.Canvas.Text.Cursor.Type
+{
+   [[Cursor type for Text.]]
+   under, [[ cursor type is under. ]]
+   before [[ cursor type is before. ]]
+}
 
 enum Evas.Text_Style_Type {
    [[Types of styles to be applied on text objects. The

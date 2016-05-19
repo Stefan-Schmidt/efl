@@ -45,7 +45,8 @@ EAPI const Evas_Textblock_Node_Format *evas_textblock_node_format_last_get(const
  * @see evas_object_textblock_cursor_new
  *
  */
-typedef struct _Evas_Textblock_Cursor             Evas_Textblock_Cursor;
+typedef struct _Efl_Canvas_Text_Cursor            Efl_Canvas_Text_Cursor;
+typedef struct _Efl_Canvas_Text_Cursor            Evas_Textblock_Cursor;
 
 /**
  * Free the cursor and unassociate it from the object.
