@@ -4270,7 +4270,7 @@ _layout_do_format(const Evas_Object *obj EINA_UNUSED, Ctxt *c,
    const char *s;
    const char *item;
    int handled = 0;
-   Eina_Bool is_item = (n->annotation && n->annotation->is_item);
+   Eina_Bool is_item = (n->annotation && n->annotation->is_item && n->opener);
 
    s = n->format;
    if (!strncmp(s, "item ", 5) || is_item)
@@ -8671,7 +8671,9 @@ _evas_textblock_format_is_visible(Evas_Object_Textblock_Node_Format *fnode,
           {
              fnode->anchor = ANCHOR_A;
           }
-        else if (is_opener && !strncmp(item, "item", itlen) && (itlen >= 4))
+        else if (is_opener &&
+              ((fnode->annotation && fnode->annotation->is_item) ||
+                 (!strncmp(item, "item", itlen) && (itlen >= 4))))
           {
              fnode->anchor = ANCHOR_ITEM;
           }
