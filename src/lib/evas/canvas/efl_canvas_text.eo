@@ -600,7 +600,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          return: Evas.Textblock.Annotation *; [[The annotation handle of the
          inserted item.]]
          params {
-            @in pos: size; [[Position of the inserted item.]]
+            @in cur: Efl.Canvas.Text.Cursor *; [[Position of the inserted item.]]
             @in format: const(char)*; [[Format of the inserted item.
             See Format styles.]]
          }
@@ -695,8 +695,8 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
           */
          return: Evas.Textblock.Annotation *;
          params {
-              @in start: size;
-              @in end:   size;
+              @in start: Efl.Canvas.Text.Cursor *;
+              @in end:   Efl.Canvas.Text.Cursor *;
               @in format: const(char)*;
          }
       }
@@ -708,8 +708,8 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          return: free(own(iterator<Evas.Textblock.Annotation *> *),
                  eina_iterator_free); [[Handle of the Annotation]]
          params {
-              @in start: size;
-              @in end:   size;
+              @in start: const(Efl.Canvas.Text.Cursor)*;
+              @in end:   const(Efl.Canvas.Text.Cursor)*;
          }
       }
       annotation_del {
