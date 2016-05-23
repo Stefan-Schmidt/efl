@@ -4036,13 +4036,13 @@ START_TEST(evas_textblock_annotation)
    /* Check some trivial cases */
    efl_canvas_text_cursor_pos_set(tb, start, 0);
    efl_canvas_text_cursor_pos_set(tb, end, 3);
-   efl_canvas_text_annotation_insert(tb, start, end, NULL);
+   ck_assert(!efl_canvas_text_annotation_insert(tb, start, end, NULL));
    efl_canvas_text_cursor_pos_set(tb, start, 0);
    efl_canvas_text_cursor_pos_set(tb, end, 3);
-   efl_canvas_text_annotation_insert(tb, start, end, "");
+   ck_assert(!efl_canvas_text_annotation_insert(tb, start, end, ""));
    efl_canvas_text_cursor_pos_set(tb, start, 1);
    efl_canvas_text_cursor_pos_set(tb, end, 0);
-   efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
+   ck_assert(!efl_canvas_text_annotation_insert(tb, start, end, "color=#fff"));
 
    /* Insert and check correct positions */
    _test_check_annotation(tb, 0, 10, _COMP_PARAMS());
@@ -4050,42 +4050,42 @@ START_TEST(evas_textblock_annotation)
    efl_canvas_text_cursor_pos_set(tb, start, 0);
    efl_canvas_text_cursor_pos_set(tb, end, 3);
    efl_canvas_text_annotation_insert(tb, start, end, "font_weight=bold");
-   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_weight=bold"));
-   _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_weight=bold"));
+   _test_check_annotation(tb, 0, 2, _COMP_PARAMS("font_weight=bold"));
+   _test_check_annotation(tb, 0, 2, _COMP_PARAMS("font_weight=bold"));
    _test_check_annotation(tb, 4, 10, _COMP_PARAMS());
 
    efl_canvas_text_cursor_pos_set(tb, start, 50);
    efl_canvas_text_cursor_pos_set(tb, end, 60);
    efl_canvas_text_annotation_insert(tb, start, end, "color=#0ff");
    _test_check_annotation(tb, 0, 49, _COMP_PARAMS("font_weight=bold"));
-   _test_check_annotation(tb, 0, 51, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
+   _test_check_annotation(tb, 0, 50, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
+   _test_check_annotation(tb, 0, 55, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
    _test_check_annotation(tb, 0, 59, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
-   _test_check_annotation(tb, 0, 60, _COMP_PARAMS("font_weight=bold", "color=#0ff"));
    _test_check_annotation(tb, 40, 50, _COMP_PARAMS("color=#0ff"));
    _test_check_annotation(tb, 40, 51, _COMP_PARAMS("color=#0ff"));
    _test_check_annotation(tb, 40, 61, _COMP_PARAMS("color=#0ff"));
-   _test_check_annotation(tb, 60, 61, _COMP_PARAMS("color=#0ff"));
-   _test_check_annotation(tb, 61, 62, _COMP_PARAMS());
+   _test_check_annotation(tb, 59, 60, _COMP_PARAMS("color=#0ff"));
+   _test_check_annotation(tb, 60, 61, _COMP_PARAMS());
 
    /* See that annotation's positions are updated as text is inserted */
    evas_object_textblock_text_markup_set(tb, "hello");
    efl_canvas_text_cursor_pos_set(tb, start, 0);
    efl_canvas_text_cursor_pos_set(tb, end, 2);
    an = efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
-   _test_check_annotation(tb, 3, 3, _COMP_PARAMS());
+   _test_check_annotation(tb, 2, 3, _COMP_PARAMS());
    evas_textblock_cursor_pos_set(cur, 0);
    evas_textblock_cursor_text_append(cur, "a");
-   _test_check_annotation(tb, 3, 3, _COMP_PARAMS("color=#fff"));
-   _test_check_annotation(tb, 4, 4, _COMP_PARAMS());
+   _test_check_annotation(tb, 2, 3, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 3, 4, _COMP_PARAMS());
 
    /* Replace annotations's format */
    evas_object_textblock_annotation_set(tb, an, "font_size=14");
-   _test_check_annotation(tb, 3, 3, _COMP_PARAMS("font_size=14"));
-   _test_check_annotation(tb, 4, 4, _COMP_PARAMS());
+   _test_check_annotation(tb, 2, 3, _COMP_PARAMS("font_size=14"));
+   _test_check_annotation(tb, 3, 4, _COMP_PARAMS());
 
    evas_object_textblock_text_markup_set(tb, "hello world");
    efl_canvas_text_cursor_pos_set(tb, start, 0);
-   efl_canvas_text_cursor_pos_set(tb, end, 1);
+   efl_canvas_text_cursor_pos_set(tb, end, 2);
    an = efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
    efl_canvas_text_cursor_pos_set(tb, start, 2);
    efl_canvas_text_cursor_pos_set(tb, end, 3);
@@ -4102,10 +4102,10 @@ START_TEST(evas_textblock_annotation)
    /* Delete annotations directly */
    evas_object_textblock_text_markup_set(tb, "hello world");
    efl_canvas_text_cursor_pos_set(tb, start, 0);
-   efl_canvas_text_cursor_pos_set(tb, end, 1);
+   efl_canvas_text_cursor_pos_set(tb, end, 2);
    an = efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
-   efl_canvas_text_cursor_pos_set(tb, start, 2);
-   efl_canvas_text_cursor_pos_set(tb, end, 3);
+   efl_canvas_text_cursor_pos_set(tb, start, 3);
+   efl_canvas_text_cursor_pos_set(tb, end, 4);
    an2 = efl_canvas_text_annotation_insert(tb, start, end, "font_size=14");
    evas_object_textblock_annotation_del(tb, an);
    _test_check_annotation(tb, 0, 3, _COMP_PARAMS("font_size=14"));
@@ -4114,10 +4114,10 @@ START_TEST(evas_textblock_annotation)
    efl_canvas_text_cursor_pos_set(tb, start, 0);
    efl_canvas_text_cursor_pos_set(tb, end, 1);
    an = efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
-   _test_check_annotation(tb, 2, 3, _COMP_PARAMS());
-   _test_check_annotation(tb, 1, 1, _COMP_PARAMS("color=#fff"));
+   _test_check_annotation(tb, 1, 3, _COMP_PARAMS());
+   _test_check_annotation(tb, 0, 0, _COMP_PARAMS("color=#fff"));
    evas_object_textblock_annotation_del(tb, an);
-   _test_check_annotation(tb, 1, 1, _COMP_PARAMS());
+   _test_check_annotation(tb, 0, 0, _COMP_PARAMS());
 
    /* Check blocking of "item formats" */
    evas_object_textblock_text_markup_set(tb, "hello world");
@@ -4163,7 +4163,7 @@ START_TEST(evas_textblock_annotation)
    /* Using annotations with new text API */
    efl_text_set(tb, "hello");
    efl_canvas_text_cursor_pos_set(tb, start, 0);
-   efl_canvas_text_cursor_pos_set(tb, end, 4);
+   efl_canvas_text_cursor_pos_set(tb, end, 5);
    efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
    _test_check_annotation(tb, 3, 3, _COMP_PARAMS("color=#fff"));
    evas_textblock_cursor_pos_set(cur, 5);
@@ -4179,7 +4179,7 @@ START_TEST(evas_textblock_annotation)
    /* Specific case with PS */
    efl_text_set(tb, "hello\nworld");
    efl_canvas_text_cursor_pos_set(tb, start, 0);
-   efl_canvas_text_cursor_pos_set(tb, end, 4);
+   efl_canvas_text_cursor_pos_set(tb, end, 5);
    efl_canvas_text_annotation_insert(tb, start, end, "color=#fff");
    _test_check_annotation(tb, 4, 4, _COMP_PARAMS("color=#fff"));
    evas_textblock_cursor_pos_set(cur, 5);

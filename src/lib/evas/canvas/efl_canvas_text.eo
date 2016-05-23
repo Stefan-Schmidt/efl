@@ -680,8 +680,7 @@ class Efl.Canvas.Text (Evas.Object, Efl.Text)
          ]]
       }
       annotation_insert {
-         [[Inserts an annotation format in a specified range [$start, $end]
-           in the text.
+         [[Inserts an annotation format in a specified range [$start, $end - 1].
 
            This will add both opening and closing formats for the given
            $format.

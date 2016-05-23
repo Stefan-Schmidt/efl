@@ -13412,11 +13412,10 @@ _textblock_annotation_set(Eo *eo_obj, Evas_Textblock_Data *o,
    an->start_node = fnode;
    fnode->annotation = an;
 
-   /* Add closing format at end + 1 */
+   /* Add a closing format at end (i.e. format does not apply at end) */
    len = strlen(format);
    buf = malloc(len + 4);
    sprintf(buf, "</%s>", format);
-   efl_canvas_text_cursor_char_next(eo_obj, end);
    _evas_textblock_cursor_format_append(end, buf, &fnode);
    free(buf);
    an->end_node = fnode;
@@ -13462,7 +13461,6 @@ _efl_canvas_text_annotation_set(Eo *eo_obj,
    /* XXX: Not efficient but works and saves code */
    _textblock_cursor_pos_at_fnode_set(eo_obj, start, annotation->start_node);
    _textblock_cursor_pos_at_fnode_set(eo_obj, end, annotation->end_node);
-   efl_canvas_text_cursor_char_prev(eo_obj, end);
 
    _evas_textblock_node_format_remove(o, annotation->start_node, 0);
    _evas_textblock_node_format_remove(o, annotation->end_node, 0);
@@ -13638,8 +13636,14 @@ _efl_canvas_text_object_item_insert(Eo *eo_obj EINA_UNUSED,
          Evas_Textblock_Data *o EINA_UNUSED,
          Efl_Canvas_Text_Cursor *cur, const char *format)
 {
+   Evas_Textblock_Annotation *ret;
+   Efl_Canvas_Text_Cursor *cur2 = efl_canvas_text_cursor_new(eo_obj);
+   efl_canvas_text_cursor_copy(eo_obj, cur2, cur);
    eina_ustrbuf_insert_char(cur->node->unicode, _REPLACEMENT_CHAR, cur->pos);
-   return _textblock_annotation_insert(eo_obj, o, cur, cur, format, EINA_TRUE);
+   efl_canvas_text_cursor_char_next(eo_obj, cur2);
+   ret = _textblock_annotation_insert(eo_obj, o, cur, cur2, format, EINA_TRUE);
+   efl_canvas_text_cursor_free(eo_obj, cur2);
+   return ret;
 }
 
 EOLIAN static void
