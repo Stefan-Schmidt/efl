@@ -3935,6 +3935,26 @@ _edje_object_efl_container_content_part_name_get(Eo *obj EINA_UNUSED, Edje *ed E
    return rp->part->name;
 }
 
+EOLIAN Eo *
+_edje_object_efl_part_part(Eo *obj, Edje *ed, const char *part)
+{
+   Edje_Real_Part *rp;
+
+   if ((!ed) || (!part)) return NULL;
+
+   /* Need to recalc before providing the object. */
+   _edje_recalc_do(ed);
+
+   rp = _edje_real_part_recursive_get(&ed, part);
+   if (!rp) return NULL;
+
+   if (rp->part->type == EDJE_PART_TYPE_BOX)
+     return _edje_box_internal_proxy_get(obj, ed, rp);
+   else if (rp->part->type == EDJE_PART_TYPE_TABLE)
+     return _edje_table_internal_proxy_get(obj, ed, rp);
+   else return NULL; /* FIXME/TODO: text & others (color, ...) */
+}
+
 EOLIAN void
 _edje_object_size_min_get(Eo *obj EINA_UNUSED, Edje *ed, Evas_Coord *minw, Evas_Coord *minh)
 {
