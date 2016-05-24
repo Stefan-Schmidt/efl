@@ -4048,7 +4048,7 @@ EAPI char                                    *evas_textblock_text_utf8_to_markup
  */
 EAPI void                                     evas_object_textblock_clear(Evas_Object *obj) EINA_ARG_NONNULL(1);
 
-#include "canvas/evas_textblock.eo.legacy.h"
+#include "canvas/efl_canvas_text.eo.legacy.h"
 
 /**
  * @}

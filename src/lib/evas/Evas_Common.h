@@ -3067,7 +3067,7 @@ typedef struct _Evas_Textblock_Style              Evas_Textblock_Style;
  * @see evas_object_textblock_cursor_new
  *
  */
-typedef struct _Evas_Textblock_Cursor             Evas_Textblock_Cursor;
+typedef struct _Efl_Canvas_Text_Cursor            Evas_Textblock_Cursor;
 
 /**
  * @typedef Evas_Object_Textblock_Node_Format

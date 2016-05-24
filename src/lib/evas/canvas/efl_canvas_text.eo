@@ -1,11 +1,10 @@
-struct @extern Evas.Textblock.Cursor;
+struct Efl.Canvas.Text.Cursor;
 struct @extern Evas.Textblock.Style;
 struct Evas.Textblock.Node_Format;
 
-class Evas.Textblock (Evas.Object)
+class Efl.Canvas.Text (Evas.Object)
 {
    legacy_prefix: evas_object_textblock;
-   eo_prefix: evas_obj_textblock;
    methods {
       @property text_markup {
          set {
@@ -155,7 +154,7 @@ class Evas.Textblock (Evas.Object)
       @property cursor {
          get {
             [[Get the object's main cursor.]]
-            return: Evas.Textblock.Cursor *;
+            return: Efl.Canvas.Text.Cursor *;
          }
       }
       @property size_native {
@@ -230,7 +229,7 @@ class Evas.Textblock (Evas.Object)
            associate it. (only people developing the actual object, and
            not users of the object).
          ]]
-         return: Evas.Textblock.Cursor *; [[The new cursor.]]
+         return: Efl.Canvas.Text.Cursor *; [[The new cursor.]]
       }
       node_format_list_get @const {
          legacy: evas_textblock_node_format_list_get;
