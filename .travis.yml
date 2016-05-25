@@ -1,0 +1,83 @@
+language: c
+
+sudo: required
+dist: trusty
+
+# Xcode 7.3.1, OS X 10.11
+osx_image: xcode7.3
+
+os:
+  - linux
+  - osx
+
+compiler:
+#  - clang
+  - gcc
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gettext check bullet dbus fontconfig freetype fribidi gst-plugins-good gstreamer luajit openssl webp libsndfile glib libspectre libraw librsvg poppler lz4; fi
+
+addons:
+  apt:
+    packages:
+    - autopoint
+    - doxygen
+    - check
+    - luajit
+    - libharfbuzz-dev
+    - libpng12-dev
+    - libudev-dev
+    - libwebp-dev
+    - libssl-dev
+    - libluajit-5.1-dev
+    - libfribidi-dev
+    - libcogl-gles2-dev
+    - libgif-dev
+    - libtiff5-dev
+    - libgstreamer1.0-dev
+    - libgstreamer-plugins-base1.0-dev
+    - libdbus-1-dev
+    - libmount-dev
+    - libblkid-dev
+    - libpulse-dev
+    - libsndfile1-dev
+    - libxrandr-dev
+    - libxtst-dev
+    - libxcursor-dev
+    - libxcomposite-dev
+    - libxp-dev
+    - libxinerama-dev
+    - libxkbfile-dev
+    - libxtst-dev
+    - libbullet-dev
+    - libvlc-dev
+    - libsndfile1-dev
+    - libraw-dev
+    - libspectre-dev
+    - libpoppler-cpp-dev
+    - libpam0g-dev
+    - liblz4-dev
+
+before_script:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export DISPLAY=:99.0; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sh -e /etc/init.d/xvfb start; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3; fi
+
+script:
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew migrate dbus; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mkdir -p ~/Library/LaunchAgents; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ln -sfv /usr/local/opt/d-bus/*.plist ~/Library/LaunchAgents; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then launchctl load ~/Library/LaunchAgents/org.freedesktop.dbus-session.plist; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH="$(brew --prefix gettext)/bin:$PATH"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export COPTS="--with-crypto=none --disable-pulseaudio"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export COPTS="--disable-systemd --disable-cxx-bindings"; fi
+  - ./autogen.sh $COPTS
+  - make -j 10
+#  - make -j 10 examples
+#  - make -j 10 benchmark
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then eval $(dbus-launch --sh-syntax --exit-with-session); fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 dist && mkdir tmp && cp efl*.gz tmp/ && cd tmp/ && tar xf efl* && cd efl* && ./configure $COPTS && make -j 10 && make -j 10 examples && make -j 10 benchmark && make -j 10 check && cd ../.. ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 check; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cat src/tests/ecore/*log; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 distcheck; fi
