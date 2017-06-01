@@ -71,18 +71,18 @@ before_script:
 script:
   - docker build .
 #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew migrate dbus; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mkdir -p ~/Library/LaunchAgents; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ln -sfv /usr/local/opt/d-bus/*.plist ~/Library/LaunchAgents; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then launchctl load ~/Library/LaunchAgents/org.freedesktop.dbus-session.plist; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH="$(brew --prefix gettext)/bin:$PATH"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export COPTS="--with-crypto=none --disable-pulseaudio"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export COPTS="--disable-systemd --disable-cxx-bindings"; fi
-  - ./autogen.sh $COPTS
-  - make -j 10
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mkdir -p ~/Library/LaunchAgents; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ln -sfv /usr/local/opt/d-bus/*.plist ~/Library/LaunchAgents; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then launchctl load ~/Library/LaunchAgents/org.freedesktop.dbus-session.plist; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH="$(brew --prefix gettext)/bin:$PATH"; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export COPTS="--with-crypto=none --disable-pulseaudio"; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export COPTS="--disable-systemd --disable-cxx-bindings"; fi
+#  - ./autogen.sh $COPTS
+#  - make -j 10
 #  - make -j 10 examples
 #  - make -j 10 benchmark
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then eval $(dbus-launch --sh-syntax --exit-with-session); fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then eval $(dbus-launch --sh-syntax --exit-with-session); fi
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 dist && mkdir tmp && cp efl*.gz tmp/ && cd tmp/ && tar xf efl* && cd efl* && ./configure $COPTS && make -j 10 && make -j 10 examples && make -j 10 benchmark && make -j 10 check && cd ../.. ;fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 check; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 check; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cat src/tests/ecore/*log; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 distcheck; fi

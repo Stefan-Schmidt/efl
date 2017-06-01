@@ -10,5 +10,5 @@ RUN mkdir -p /src/
 # Build
 WORKDIR /src/
 COPY . /src/
-RUN ./autogen.sh
+RUN ./autogen.sh --disable-cxx-bindings
 RUN make -j 10
