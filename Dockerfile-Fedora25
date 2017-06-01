@@ -1,0 +1,26 @@
+# TODO
+# - Create docker images with needed deps installed
+# - Create a new docker image after every efl build with efl installed to be used by E, terminology..
+# - Create a matrix build with docker images for Ubuntu, Fedora, Arch, openSuse...
+# - Create docker build for all extra options
+# - Create docker build for wayland options
+
+FROM fedora:25
+
+# Install
+RUN dnf update --assumeyes
+RUN dnf install --assumeyes bullet-devel libpng-devel libjpeg-turbo-devel gstreamer1-devel gstreamer1-plugins-base-devel zlib-devel luajit-devel libtiff-devel openssl-devel libcurl-devel dbus-devel glibc-devel fontconfig-devel freetype-devel fribidi-devel pulseaudio-libs-devel libsndfile-devel libX11-devel libXau-devel libXcomposite-devel libXdamage-devel libXdmcp-devel libXext-devel libXfixes-devel libXinerama-devel libXrandr-devel libXrender-devel libXScrnSaver-devel libXtst-devel libXcursor-devel libXp-devel libXi-devel mesa-libGL-devel giflib-devel libmount-devel libblkid-devel systemd-devel poppler-cpp-devel poppler-devel LibRaw-devel libspectre-devel librsvg2-devel autoconf automake gcc gcc-c++ gettext-devel findutils tar xz libtool make
+
+# Build
+RUN mkdir -p /src/
+WORKDIR /src/
+COPY . /src/
+RUN ./autogen.sh --disable-cxx-bindings
+RUN make -j 10
+RUN make -j 10 examples
+#RUN make -j 10 check
+RUN make -j 10 benchmark
+
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then eval $(dbus-launch --sh-syntax --exit-with-session); fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 dist && mkdir tmp && cp efl*.gz tmp/ && cd tmp/ && tar xf efl* && cd efl* && ./configure $COPTS && make -j 10 && make -j 10 ex    amples && make -j 10 benchmark && make -j 10 check && cd ../.. ;fi
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make -j 10 distcheck; fi
