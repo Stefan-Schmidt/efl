@@ -78,7 +78,7 @@ matrix:
 
 
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker build -f  Dockerfile-$DISTRO . ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]] && [[ "$DISTRO" != "" ]]; then docker build -f  Dockerfile-$DISTRO . ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew migrate dbus; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mkdir -p ~/Library/LaunchAgents; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ln -sfv /usr/local/opt/d-bus/*.plist ~/Library/LaunchAgents; fi
