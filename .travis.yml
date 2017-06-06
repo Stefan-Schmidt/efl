@@ -78,9 +78,8 @@ matrix:
   - env: DISTRO=Fedora25
   - env: DISTRO=Opensuse422
 
-
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]] && [[ "$DISTRO" != "" ]]; then docker build -f  Dockerfile-$DISTRO . ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]] && [[ "$DISTRO" != "" ]]; then docker build -f  .ci/Dockerfile-$DISTRO . ; fi
 # This errors out. Still needed? Maybe for runtime dbus usage
 #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew migrate dbus; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mkdir -p ~/Library/LaunchAgents; fi
