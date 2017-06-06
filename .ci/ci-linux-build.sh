@@ -1,6 +1,7 @@
-#1/bin/sh
+#!/bin/sh
 
-COPTS="--with-tests=regular --disable-cxx-bindings"
+#COPTS="--with-tests=regular --disable-cxx-bindings"
+COPTS="--with-tests=regular"
 PARALLEL_JOBS=10
 
 # Normal build test of all targets
@@ -13,13 +14,11 @@ make -j $PARALLEL_JOBS benchmark
 #./configure $COPTS && make -j 10 && make -j 10 examples && make -j 10 benchmark && make -j 10 check && cd ../..
 
 # Prepare test setup
-#export DISPLAY=:99.0
-#sh -e /etc/init.d/xvfb start
-#sleep 3
-#eval $(dbus-launch --sh-syntax --exit-with-session)
-#make -j 10 check
-#cat src/tests/ecore/*log
-
-
+export DISPLAY=:99.0
+sh -e /etc/init.d/xvfb start
+sleep 3
+eval $(dbus-launch --sh-syntax --exit-with-session)
+make -j 10 check
+cat src/tests/ecore/*log
 
 #make -j 10 distcheck
