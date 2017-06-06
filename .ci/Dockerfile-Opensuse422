@@ -10,10 +10,4 @@ RUN zypper --non-interactive install gcc-c++ gettext-devel doxygen check libchec
 RUN mkdir -p /src/
 WORKDIR /src/
 COPY . /src/
-RUN ./autogen.sh
-RUN ulimit -s
-RUN ulimit -s 65536
-RUN make -j 2
-RUN make -j 2 examples
-#RUN make -j 10 check
-RUN make -j 2 benchmark
+RUN .ci/ci-linux-build.sh

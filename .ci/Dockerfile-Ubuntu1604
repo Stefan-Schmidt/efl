@@ -8,8 +8,4 @@ RUN apt-get install -y build-essential autoconf automake autopoint doxygen check
 RUN mkdir -p /src/
 WORKDIR /src/
 COPY . /src/
-RUN ./autogen.sh --disable-cxx-bindings
-RUN make -j 10
-RUN make -j 10 examples
-#RUN make -j 10 check
-RUN make -j 10 benchmark
+RUN .ci/ci-linux-build.sh
