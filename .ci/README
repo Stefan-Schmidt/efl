@@ -1,0 +1,24 @@
+Matrix build:
+-------------
+We are building our software on different distributions wioth the help of docker images. Right now
+we are using Ubuntu 16.04 Ubuntu 17.04, Fedora 25 and openSUSE 42.2.
+
+OSX build:
+----------
+We are using the OSX support of Travis CI to build EFL on OSX.
+
+
+
+TODO
+- Create docker images with needed deps installed
+- Create a new docker image after every efl build with efl installed to be used by E, terminology..
+- Create Arch docker build
+- Fix OpenSuse build (to long arguments)
+- Create docker build for all extra options
+- Create docker build for wayland options
+- Windows builds with this windows CI setup
+- Windows support withg mingw setup on Linux
+- ABI checker builds
+- Coverage builds
+- Usage of shippable parallel to Travis?
+- Usage of a Jenkinsfile to use our own infra from this?
