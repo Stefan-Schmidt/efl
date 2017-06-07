@@ -40,6 +40,10 @@
 # define SIG SIGPROF
 #endif
 
+#if defined(__MACH__)
+typedef int clockid_t;
+#endif
+
 static Eina_Semaphore _wait_for_bts_sem;
 
 // _bt_buf[0] is always for mainloop, 1 + is for extra threads
