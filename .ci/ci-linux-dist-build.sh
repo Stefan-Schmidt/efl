@@ -7,7 +7,7 @@ PARALLEL_JOBS=10
 ./autogen.sh $COPTS $@
 make -j $PARALLEL_JOBS dist
 mkdir tmp/
-tar xf efl* -C tmp/
+tar xf efl*gz -C tmp/
 cd tmp/efl*
 ./configure $COPTS
 make -j $PARALLEL_JOBS

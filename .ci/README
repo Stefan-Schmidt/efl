@@ -16,7 +16,7 @@ TODO
 - Fix OpenSuse build (to long arguments)
 - Create docker build for all extra options
 - Create docker build for wayland options
-- Windows builds with this windows CI setup
+- Windows builds with this appveyor CI native windows
 - Windows support withg mingw setup on Linux
 - ABI checker builds
 - Coverage builds
