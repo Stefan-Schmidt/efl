@@ -30,7 +30,7 @@ matrix:
   - env: DISTRO=Ubuntu1604
   - env: DISTRO=Ubuntu1704
   - env: DISTRO=Fedora25
-  - env: DISTRO=Opensuse422
+#  - env: DISTRO=Opensuse422
 
 script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]] && [[ "$DISTRO" != "" ]]; then docker build -f  .ci/Dockerfile-$DISTRO . ; fi
