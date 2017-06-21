@@ -6,6 +6,7 @@ dist: trusty
 # Xcode 7.3.1, OS X 10.11
 # Xcode 8.3.3, OS X 10.12
 #  - xcode7.3
+
 osx_image:
   - xcode8.3
 
@@ -34,6 +35,7 @@ matrix:
   - env: DISTRO=Ubuntu1604
   - env: DISTRO=Ubuntu1704
   - env: DISTRO=Fedora25
+
 #  - os: osx
 #    osx_image: xcode7.3
 #  - os: osx
