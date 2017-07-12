@@ -8,6 +8,14 @@ OSX build:
 We are using the OSX support of Travis CI to build EFL on OSX.
 
 
+Run locally:
+------------
+
+For easy developer testing the CI setup can also be run in full or only parts locally on the
+developers machine. You need ot have docker installed and after that it is a simple:
+
+docker run 
+
 
 TODO
 - Create docker images with needed deps installed
