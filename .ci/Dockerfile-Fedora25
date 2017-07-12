@@ -9,4 +9,4 @@ RUN mkdir -p /src/
 WORKDIR /src/
 COPY . /src/
 RUN .ci/ci-linux-build.sh
-RUN .ci/ci-linux-dist-build.sh
+#RUN .ci/ci-linux-dist-build.sh
