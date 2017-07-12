@@ -35,6 +35,7 @@ matrix:
   - env: DISTRO=Ubuntu1604
   - env: DISTRO=Ubuntu1704
   - env: DISTRO=Fedora25
+  - env: DISTRO=Fedora26
 
 #  - os: osx
 #    osx_image: xcode7.3
