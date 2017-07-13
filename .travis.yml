@@ -8,7 +8,7 @@ dist: trusty
 #  - xcode7.3
 
 osx_image:
-  - xcode8.3
+  - xcode7.3
 
 os:
   - linux
